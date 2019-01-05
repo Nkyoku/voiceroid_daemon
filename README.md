@@ -1,0 +1,2 @@
+# voiceroid_daemon
+VOICEROID2のHTTPサーバーデーモン

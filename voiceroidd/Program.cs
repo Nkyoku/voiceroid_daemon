@@ -1,16 +1,25 @@
 ﻿using System;
 using System.Text;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Web;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Runtime.InteropServices;
+using System.Windows.Forms;
+using System.Diagnostics;
+using System.Drawing;
 
 namespace voiceroid_daemon
 {
     class Program
     {
+        [DllImport("user32.dll", SetLastError = true)]
+        static extern IntPtr SetParent(IntPtr hWndChild, IntPtr hWndNewParent);
+
+        [DllImport("user32.dll")]
+        static extern IntPtr GetShellWindow();
+        
         // パスの最大長
         private const int MaxPathLength = 1024;
 
@@ -19,6 +28,9 @@ namespace voiceroid_daemon
 
         // 設定ファイルのセクション名
         private const string ConfigFileSection = "Default";
+
+        // VOICEROIDエディタの実行ファイル名
+        private const string VoiceroidEditor = "VoiceroidEditor.exe";
 
         // インストールディレクトリのパス
         private static string InstallPath = System.Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86) + "\\AHS\\VOICEROID2";
@@ -113,7 +125,7 @@ namespace voiceroid_daemon
                 }
                 return;
             }
-
+            
             // AITalkの初期化を行う
             try
             {
@@ -147,8 +159,62 @@ namespace voiceroid_daemon
                 Console.Error.WriteLine(ex);
                 return;
             }
-            
-            // HTTPサーバーの初期化を行う
+
+            // コマンドライン引数にhideが指定されていたらコンソールを隠す
+            bool hide_to_tray = false;
+            foreach(string arg in args)
+            {
+                if (arg == "hide")
+                {
+                    hide_to_tray = true;
+                    break;
+                }
+            }
+
+            if (hide_to_tray == false)
+            {
+                Run();
+            }
+            else
+            {
+                // トレイアイコンを作成する
+                // アイコンはVOICEROIDエディタのものを使用するが、ダメならこの実行ファイルのものを使用する
+                NotifyIcon notify_icon = new NotifyIcon();
+                try
+                {
+                    notify_icon.Icon = Icon.ExtractAssociatedIcon(InstallPath + "\\" + VoiceroidEditor);
+                }
+                catch (Exception)
+                {
+                    notify_icon.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+                }
+                notify_icon.Text = "voiceroidd";
+                notify_icon.Visible = true;
+
+                // トレイアイコンのコンテキストメニューを作成する
+                ContextMenu menu = new ContextMenu();
+                menu.MenuItems.Add(new MenuItem("Exit", new EventHandler((object sender, EventArgs e) =>
+                {
+                    notify_icon.Visible = false;
+                    Application.Exit();
+                    Environment.Exit(1);
+                })));
+                notify_icon.ContextMenu = menu;
+
+                // 処理を別スレッドで実行する
+                Task.Factory.StartNew(Run);
+
+                // タスクバーからウィンドウを隠す
+                SetParent(Process.GetCurrentProcess().MainWindowHandle, GetShellWindow());
+
+                // メッセージループを開始する
+                Application.Run();
+            }
+        }
+
+        // 処理を本体
+        private static void Run()
+        {
             try
             {
                 // HTTPサーバーがサポートされていることを確認する
@@ -299,6 +365,7 @@ namespace voiceroid_daemon
             responce.Close();
         }
 
+        // subpathがurlのパスの一部に一致するか調べ、一致したら次の部分パスを比較できるようにインデックスをずらす
         private static bool UrlMatch(string url, string subpath, ref int index)
         {
             if (string.Compare(url, index, subpath, 0, subpath.Length) == 0)

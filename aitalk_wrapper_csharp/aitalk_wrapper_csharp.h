@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <vector>
 #include <Windows.h>
 #include "aitalk_AITalk.h"
 
@@ -56,6 +57,9 @@ namespace AITalkWrapper {
         array<Byte>^ KanaToSpeech(String ^kana, int timeout, [Out] array<Tuple<UInt64, String^>^> ^%event);
 
     private:
+        // ユニコード文字列をShift-JISに変換し、Shift-JISの各バイトがユニコード文字列の何文字目に対応するかを返す
+        bool UnicodeToShiftJIS(const std::wstring &unicode_string, std::string *ascii_string, std::vector<int> *ascii_to_unicode);
+
         // このラッパーライブラリを初期化する
         void InitializeAll(void);
 

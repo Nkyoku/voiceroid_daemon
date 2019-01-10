@@ -1,8 +1,6 @@
 ﻿// C#からAITalkを呼びやすくするためのラッパーライブラリ
 
 #include "aitalk_wrapper_csharp.h"
-#include <string>
-#include <vector>
 #include <msclr/marshal.h>
 
 using namespace msclr::interop;
@@ -369,14 +367,25 @@ String^ AITalkWrapper::AITalkWrapper::TextToKana(String ^text, int timeout) {
     std::unique_ptr< KanaConverter_t> converter(new KanaConverter_t);
     converter->GetKana = AITalkAPI_GetKana;
     
+    // UnicodeとShift-JISの対応を記憶する
+    std::string ascii_string;
+    std::vector<int> ascii_to_unicode;
+    {
+        array<wchar_t>^ text_char_array = text->ToCharArray();
+        pin_ptr<wchar_t> text_ptr = &text_char_array[0];
+        std::wstring unicode_string(text_ptr, text_char_array->Length);
+        if (UnicodeToShiftJIS(unicode_string, &ascii_string, &ascii_to_unicode) == false) {
+            return nullptr;
+        }
+    }
+
     // 変換を開始する
     AITalk_TJobParam job_param;
     job_param.modeInOut = AITALKIOMODE_PLAIN_TO_AIKANA;
     job_param.userData = converter.get();
     int32_t job_id = 0;
     AITalkResultCode result;
-    marshal_context context;
-    result = AITalkAPI_TextToKana(&job_id, &job_param, context.marshal_as<const char*>(text));
+    result = AITalkAPI_TextToKana(&job_id, &job_param, ascii_string.c_str());
     if (result != AITALKERR_SUCCESS) {
         SetLastError(String::Format(L"仮名変換が開始できませんでした。(エラーコード:{0})", static_cast<int>(result)));
         return nullptr;
@@ -398,8 +407,31 @@ String^ AITalkWrapper::AITalkWrapper::TextToKana(String ^text, int timeout) {
         return nullptr;
     }
 
+    // 結果に含まれるIrq MARKのバイト位置をUnicodeの文字の位置へ置き換える
+    std::string &output = converter->Output;
+    std::string output_replaced;
+    size_t offset = 0;
+    while (true) {
+        static const char StartOfIrqMark[] = "(Irq MARK=_AI@";
+        size_t pos = output.find(StartOfIrqMark, offset);
+        if (pos == std::string::npos) {
+            output_replaced.append(&output[offset], &output[output.size()]);
+            break;
+        }
+        pos += strlen(StartOfIrqMark);
+        output_replaced.append(&output[offset], &output[pos]);
+        char *end_ptr;
+        long byte_index = strtol(&output[pos], &end_ptr, 10);
+        if ((byte_index < 0) || (ascii_to_unicode.size() <= static_cast<size_t>(byte_index))) {
+            SetLastError(L"文節位置の特定に失敗しました。");
+            return nullptr;
+        }
+        output_replaced.append(std::to_string(ascii_to_unicode[byte_index]));
+        offset = end_ptr - &output[0];
+    }
+
     ClearLastError();
-    return gcnew String(converter->Output.c_str());
+    return gcnew String(output_replaced.c_str());
 }
 
 array<Byte>^ AITalkWrapper::AITalkWrapper::KanaToSpeech(String ^kana, int timeout) {
@@ -546,4 +578,63 @@ static int __stdcall CallbackEventTts(AITalkEventReasonCode reason_code, int32_t
         conveter->EventOutput.push_back(std::pair<uint64_t, std::string>(tick, buf));
     }
     return 0;
+}
+
+bool AITalkWrapper::AITalkWrapper::UnicodeToShiftJIS(const std::wstring &unicode_string, std::string *ascii_string, std::vector<int> *ascii_to_unicode) {
+    // UnicodeをShift-JISに変換する
+    std::vector<char> ascii_string_buffer(2 * unicode_string.size() + 2); // 1バイト多めに確保する
+    BOOL difficult_to_read;
+    int written_bytes;
+    written_bytes = WideCharToMultiByte(
+        CP_ACP, 
+        WC_NO_BEST_FIT_CHARS, 
+        unicode_string.c_str(), 
+        unicode_string.length(),
+        ascii_string_buffer.data(),
+        ascii_string_buffer.size(), 
+        NULL, 
+        &difficult_to_read);
+    if (written_bytes <= 0) {
+        SetLastError(L"文字コードの変換の途中にエラーが発生しました。");
+        return false;
+    }
+    if (static_cast<int>(ascii_string_buffer.size()) <= written_bytes) {
+        SetLastError(L"文字コードの変換バッファが不足しました。");
+        return false;
+    }
+    if (difficult_to_read == TRUE) {
+        SetLastError(L"Shift-JISで表すことのできない文字は話せません。");
+        return false;
+    }
+    ascii_string->assign(ascii_string_buffer.data(), ascii_string_buffer.size());
+
+    // Shift-JISの各バイトが何文字目が計算する
+    int char_index = 0;
+    int byte_index = 0;
+    ascii_to_unicode->resize(ascii_string->size() + 1);
+    while(true){
+        uint8_t c = (*ascii_string)[byte_index];
+        (*ascii_to_unicode)[byte_index] = char_index;
+        if (c == '\0') {
+            break;
+        }
+        if (((0x81 <= c) && (c <= 0x9F)) || ((0xE0 <= c) && (c <= 0xEF))) {
+            // Shift-JISの1バイト目なので次のバイトを読み込む
+            byte_index++;
+            (*ascii_to_unicode)[byte_index] = char_index;
+            c = (*ascii_string)[byte_index];
+            if (((c < 0x40) || (0x7E < c)) && ((c < 0x80) || (0xFC < c))) {
+                SetLastError(L"このプログラムは誤ったShift-JISの取り扱いをしています。");
+                return false;
+            }
+        }
+        byte_index++;
+        char_index++;
+    }
+    if (unicode_string.size() != static_cast<size_t>((*ascii_to_unicode)[byte_index])) {
+        SetLastError(L"UnicodeとShift-JISの対応関係の計算に失敗しました。");
+        return false;
+    }
+
+    return true;
 }

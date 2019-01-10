@@ -108,15 +108,15 @@ namespace voiceroid_daemon
             }
             else
             {
-                Console.Error.WriteLine(String.Format("設定ファイル'{0}'の読み込みに失敗しました。", ConfigFilePath));
+                MessageBox.Show(String.Format("設定ファイル'{0}'の読み込みに失敗しました。", ConfigFilePath));
                 SaveConfiguration(ConfigFilePath);
                 if (File.Exists(ConfigFilePath) == true)
                 {
-                    Console.Error.WriteLine(String.Format("設定ファイル'{0}'を新規に作成しましたので、設定を入力して再び起動してください。", ConfigFilePath));
+                    MessageBox.Show(String.Format("設定ファイル'{0}'を新規に作成しましたので、設定を入力して再び起動してください。", ConfigFilePath));
                 }
                 else
                 {
-                    Console.Error.WriteLine(String.Format("設定ファイル'{0}'を新規に作成しようと試みましたが失敗しました。", ConfigFilePath));
+                    MessageBox.Show(String.Format("設定ファイル'{0}'を新規に作成しようと試みましたが失敗しました。", ConfigFilePath));
                 }
                 return;
             }
@@ -151,7 +151,7 @@ namespace voiceroid_daemon
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine(ex);
+                MessageBox.Show(ex.ToString());
                 return;
             }
 

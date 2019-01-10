@@ -5,21 +5,13 @@ using System.Net;
 using System.Web;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Runtime.InteropServices;
 using System.Windows.Forms;
-using System.Diagnostics;
 using System.Drawing;
 
 namespace voiceroid_daemon
 {
     class Program
     {
-        [DllImport("user32.dll", SetLastError = true)]
-        static extern IntPtr SetParent(IntPtr hWndChild, IntPtr hWndNewParent);
-
-        [DllImport("user32.dll")]
-        static extern IntPtr GetShellWindow();
-        
         // パスの最大長
         private const int MaxPathLength = 1024;
 
@@ -58,7 +50,10 @@ namespace voiceroid_daemon
         
         // AITalkラッパーライブラリ
         private static AITalkWrapper.AITalkWrapper SpeechEngine = null;
-        
+
+        // サーバーを終了させるためのCancellationToken
+        private static CancellationTokenSource StopServerCancelToken = new CancellationTokenSource();
+
         // 設定ファイルを読み込む
         private static void LoadConfiguration(string config_path)
         {
@@ -160,56 +155,37 @@ namespace voiceroid_daemon
                 return;
             }
 
-            // コマンドライン引数にhideが指定されていたらコンソールを隠す
-            bool hide_to_tray = false;
-            foreach(string arg in args)
+            // 処理を別スレッドで実行する
+            Task task = Task.Factory.StartNew(Run);
+
+            // トレイアイコンを作成する
+            // アイコンはVOICEROIDエディタのものを使用するが、ダメならこの実行ファイルのものを使用する
+            NotifyIcon notify_icon = new NotifyIcon();
+            try
             {
-                if (arg == "hide")
-                {
-                    hide_to_tray = true;
-                    break;
-                }
+                notify_icon.Icon = Icon.ExtractAssociatedIcon(InstallPath + "\\" + VoiceroidEditor);
             }
-
-            if (hide_to_tray == false)
+            catch (Exception)
             {
-                Run();
+                notify_icon.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
             }
-            else
+            notify_icon.Text = $"voiceroidd : {VoiceName}\nListening at {ListeningAddress}";
+            notify_icon.Visible = true;
+            
+            // トレイアイコンのコンテキストメニューを作成する
+            ContextMenu menu = new ContextMenu();
+            menu.MenuItems.Add(new MenuItem("Exit", new EventHandler((object sender, EventArgs e) =>
             {
-                // トレイアイコンを作成する
-                // アイコンはVOICEROIDエディタのものを使用するが、ダメならこの実行ファイルのものを使用する
-                NotifyIcon notify_icon = new NotifyIcon();
-                try
-                {
-                    notify_icon.Icon = Icon.ExtractAssociatedIcon(InstallPath + "\\" + VoiceroidEditor);
-                }
-                catch (Exception)
-                {
-                    notify_icon.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
-                }
-                notify_icon.Text = "voiceroidd";
-                notify_icon.Visible = true;
-
-                // トレイアイコンのコンテキストメニューを作成する
-                ContextMenu menu = new ContextMenu();
-                menu.MenuItems.Add(new MenuItem("Exit", new EventHandler((object sender, EventArgs e) =>
-                {
-                    notify_icon.Visible = false;
-                    Application.Exit();
-                    Environment.Exit(1);
-                })));
-                notify_icon.ContextMenu = menu;
-
-                // 処理を別スレッドで実行する
-                Task.Factory.StartNew(Run);
-
-                // タスクバーからウィンドウを隠す
-                SetParent(Process.GetCurrentProcess().MainWindowHandle, GetShellWindow());
-
-                // メッセージループを開始する
-                Application.Run();
-            }
+                StopServerCancelToken.Cancel();
+                task.Wait();
+                notify_icon.Visible = false;
+                Application.Exit();
+                Environment.Exit(1);
+            })));
+            notify_icon.ContextMenu = menu;
+            
+            // メッセージループを開始する
+            Application.Run();
         }
 
         // 処理を本体
@@ -222,14 +198,8 @@ namespace voiceroid_daemon
                     throw new Exception("HttpListenerがサポートされていません。");
 
                 // HTTPサーバーを開始する
-                CancellationTokenSource cancel_token_source = new CancellationTokenSource();
-                Task server_task = WaitConnections(cancel_token_source.Token);
-
-                // 何かキーが押されたらHTTPサーバーを終了する
+                Task server_task = WaitConnections(StopServerCancelToken.Token);
                 Console.WriteLine("HTTP server is listening at " + ListeningAddress);
-                Console.WriteLine("Press any key to quit...");
-                Console.ReadKey(true);
-                cancel_token_source.Cancel();
                 try
                 {
                     server_task.Wait();

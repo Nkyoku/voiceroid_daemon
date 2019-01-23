@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="ソース ファイル\mpack">
+      <UniqueIdentifier>{e86d3528-7ffd-4e11-baa3-b4505df447c7}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="aitalk_AITalk.h">
@@ -25,6 +28,24 @@
   <ItemGroup>
     <ClCompile Include="aitalk_wrapper_csharp.cpp">
       <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="mpack\mpack-common.cpp">
+      <Filter>ソース ファイル\mpack</Filter>
+    </ClCompile>
+    <ClCompile Include="mpack\mpack-expect.cpp">
+      <Filter>ソース ファイル\mpack</Filter>
+    </ClCompile>
+    <ClCompile Include="mpack\mpack-node.cpp">
+      <Filter>ソース ファイル\mpack</Filter>
+    </ClCompile>
+    <ClCompile Include="mpack\mpack-platform.cpp">
+      <Filter>ソース ファイル\mpack</Filter>
+    </ClCompile>
+    <ClCompile Include="mpack\mpack-reader.cpp">
+      <Filter>ソース ファイル\mpack</Filter>
+    </ClCompile>
+    <ClCompile Include="mpack\mpack-writer.cpp">
+      <Filter>ソース ファイル\mpack</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

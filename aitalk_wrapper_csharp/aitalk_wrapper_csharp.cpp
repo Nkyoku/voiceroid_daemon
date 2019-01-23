@@ -1,6 +1,7 @@
 ﻿// C#からAITalkを呼びやすくするためのラッパーライブラリ
 
 #include "aitalk_wrapper_csharp.h"
+#include "mpack/mpack.h"
 #include <msclr/marshal.h>
 
 using namespace msclr::interop;
@@ -47,7 +48,7 @@ struct SpeechConverter_t {
     // 出力先
     std::vector<uint8_t> Output;
 
-    // イベントの出力先
+    // 発音イベントの出力先
     std::vector<std::pair<uint64_t, std::string>> EventOutput;
 
     // 同期のためのイベントハンドル
@@ -472,26 +473,47 @@ array<Byte>^ AITalkWrapper::AITalkWrapper::KanaToSpeech(String ^kana, int timeou
         return nullptr;
     }
 
-    // 出力にコピーする
-    array<Byte>^ output = gcnew array<Byte>(44 + converter->Output.size());
-    {
-        pin_ptr<Byte> output_ptr = &output[0];
-        memcpy(output_ptr + 0, "RIFF", 4);
-        *reinterpret_cast<uint32_t*>(output_ptr + 4) = 36 + converter->Output.size();
-        memcpy(output_ptr + 8, "WAVEfmt ", 8);
-        *reinterpret_cast<uint32_t*>(output_ptr + 16) = 16;
-        *reinterpret_cast<uint16_t*>(output_ptr + 20) = 0x1;
-        *reinterpret_cast<uint16_t*>(output_ptr + 22) = 1;
-        *reinterpret_cast<uint32_t*>(output_ptr + 24) = VoiceDbSampleRate;
-        *reinterpret_cast<uint32_t*>(output_ptr + 28) = 2 * VoiceDbSampleRate;
-        *reinterpret_cast<uint16_t*>(output_ptr + 32) = 2;
-        *reinterpret_cast<uint16_t*>(output_ptr + 34) = 16;
-        memcpy(output_ptr + 36, "data", 4);
-        *reinterpret_cast<uint32_t*>(output_ptr + 40) = converter->Output.size();
-        memcpy(output_ptr + 44, converter->Output.data(), converter->Output.size());
+    // 発音イベントをMessagePackに変換する
+    // これはWAVファイルのphonチャンクとして埋め込まれる
+    char *event_buffer;
+    size_t event_buffer_size;
+    mpack_writer_t writer;
+    mpack_writer_init_growable(&writer, &event_buffer, &event_buffer_size);
+    mpack_start_array(&writer, static_cast<uint32_t>(converter->EventOutput.size()));
+    for (auto &event : converter->EventOutput) {
+        mpack_start_array(&writer, 2);
+        mpack_write_u64(&writer, event.first);
+        mpack_write_str(&writer, event.second.c_str(), static_cast<uint32_t>(event.second.length()));
+        mpack_finish_array(&writer);
     }
+    mpack_finish_array(&writer);
+    if (mpack_writer_destroy(&writer) != mpack_ok) {
+        event_buffer_size = 0;
+    }
+    size_t event_buffer_size_aligned = (event_buffer_size + 3) / 4 * 4;
 
-    // イベントをコピーする
+    // 出力にコピーする
+    array<Byte>^ output = gcnew array<Byte>(52 + event_buffer_size_aligned + converter->Output.size());
+    pin_ptr<Byte> output_ptr = &output[0];
+    memcpy(output_ptr + 0, "RIFF", 4);
+    *reinterpret_cast<uint32_t*>(output_ptr + 4) = 44 + event_buffer_size_aligned + converter->Output.size();
+    memcpy(output_ptr + 8, "WAVEfmt ", 8);
+    *reinterpret_cast<uint32_t*>(output_ptr + 16) = 16;
+    *reinterpret_cast<uint16_t*>(output_ptr + 20) = 0x1;
+    *reinterpret_cast<uint16_t*>(output_ptr + 22) = 1;
+    *reinterpret_cast<uint32_t*>(output_ptr + 24) = VoiceDbSampleRate;
+    *reinterpret_cast<uint32_t*>(output_ptr + 28) = 2 * VoiceDbSampleRate;
+    *reinterpret_cast<uint16_t*>(output_ptr + 32) = 2;
+    *reinterpret_cast<uint16_t*>(output_ptr + 34) = 16;
+    memcpy(output_ptr + 36, "phon", 4);
+    *reinterpret_cast<uint32_t*>(output_ptr + 40) = static_cast<uint32_t>(event_buffer_size_aligned);
+    memcpy(output_ptr + 44, event_buffer, event_buffer_size);
+    memset(output_ptr + 44 + event_buffer_size, 0, event_buffer_size_aligned - event_buffer_size);
+    memcpy(output_ptr + 44 + event_buffer_size_aligned, "data", 4);
+    *reinterpret_cast<uint32_t*>(output_ptr + 48 + event_buffer_size_aligned) = converter->Output.size();
+    memcpy(output_ptr + 52 + event_buffer_size_aligned, converter->Output.data(), converter->Output.size());
+
+    // 発音イベントを返す
     if (event != nullptr) {
         event = gcnew array<Tuple<UInt64, String^>^>(converter->EventOutput.size());
         if (converter->EventOutput.empty() == false) {

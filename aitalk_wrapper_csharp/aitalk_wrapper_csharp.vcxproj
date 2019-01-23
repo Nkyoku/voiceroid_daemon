@@ -24,6 +24,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="aitalk_wrapper_csharp.cpp" />
+    <ClCompile Include="mpack\mpack-common.cpp" />
+    <ClCompile Include="mpack\mpack-expect.cpp" />
+    <ClCompile Include="mpack\mpack-node.cpp" />
+    <ClCompile Include="mpack\mpack-platform.cpp" />
+    <ClCompile Include="mpack\mpack-reader.cpp" />
+    <ClCompile Include="mpack\mpack-writer.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>

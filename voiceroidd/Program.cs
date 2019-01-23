@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Drawing;
+using System.Diagnostics;
 
 namespace voiceroid_daemon
 {
@@ -46,11 +47,11 @@ namespace voiceroid_daemon
         private static string VoiceName = "";
 
         // 待ち受けアドレス
-        private static string ListeningAddress = "http://127.0.0.1:80/";
+        private static string ListeningAddress = "http://127.0.0.1:8080/";
         
         // AITalkラッパーライブラリ
         private static AITalkWrapper.AITalkWrapper SpeechEngine = null;
-
+        
         // サーバーを終了させるためのCancellationToken
         private static CancellationTokenSource StopServerCancelToken = new CancellationTokenSource();
 
@@ -96,10 +97,16 @@ namespace voiceroid_daemon
             IniFileHandler.WritePrivateProfileString(ConfigFileSection, "VoiceName", VoiceName, ConfigFilePath);
             IniFileHandler.WritePrivateProfileString(ConfigFileSection, "ListeningAddress", ListeningAddress, ConfigFilePath);
         }
-        
+
         // エントリーポイント
         static void Main(string[] args)
         {
+#if DEBUG
+            // Debugビルドの場合、ログファイルを出力する
+            Trace.Listeners.Add(new TextWriterTraceListener("trace.log"));
+            Trace.AutoFlush = true;
+#endif
+
             // 設定ファイルを読み込む
             // ファイルが存在しない場合は作成し、一旦終了する
             if (File.Exists(ConfigFilePath) == true)
@@ -171,7 +178,7 @@ namespace voiceroid_daemon
             }
             notify_icon.Text = $"voiceroidd : {VoiceName}\nListening at {ListeningAddress}";
             notify_icon.Visible = true;
-            
+
             // トレイアイコンのコンテキストメニューを作成する
             ContextMenu menu = new ContextMenu();
             menu.MenuItems.Add(new MenuItem("Exit", new EventHandler((object sender, EventArgs e) =>
@@ -193,35 +200,32 @@ namespace voiceroid_daemon
         {
             try
             {
-                // HTTPサーバーがサポートされていることを確認する
-                if (HttpListener.IsSupported == false)
-                    throw new Exception("HttpListenerがサポートされていません。");
-
                 // HTTPサーバーを開始する
-                Task server_task = WaitConnections(StopServerCancelToken.Token);
-                Console.WriteLine("HTTP server is listening at " + ListeningAddress);
+                var server = new HttpListener();
+                server.Prefixes.Add(ListeningAddress);
+                server.Start();
+                Trace.WriteLine("HTTP server is listening at " + ListeningAddress);
+                Task server_task = WaitConnections(server, StopServerCancelToken.Token);
                 try
                 {
                     server_task.Wait();
                 }
-                catch (Exception) { }
+                catch (Exception ex) {
+                    Trace.WriteLine(String.Format("{0} : server_task.Wait()\n{1}", DateTime.Now, ex));
+                }
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine(ex);
+                Trace.WriteLine(String.Format("{0} : Run()\n{1}", DateTime.Now, ex));
+                MessageBox.Show(ex.ToString());
                 return;
             }
         }
 
         // 接続を待ち受ける
-        private static async Task WaitConnections(CancellationToken cancel_token)
+        private static async Task WaitConnections(HttpListener server, CancellationToken cancel_token)
         {
-            // HTTPサーバーを開始する
-            var server = new HttpListener();
-            server.Prefixes.Add(ListeningAddress);
-            server.Start();
             cancel_token.Register(() => server.Stop());
-
             while (cancel_token.IsCancellationRequested == false)
             {
                 // リクエストを取得する
@@ -232,7 +236,8 @@ namespace voiceroid_daemon
                 }
                 catch (Exception ex)
                 {
-                    Console.Error.WriteLine(ex);
+                    Trace.WriteLine(String.Format("{0} : WaitConnections()\n{1}", DateTime.Now, ex));
+                    MessageBox.Show(ex.ToString());
                     return;
                 }
             }

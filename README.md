@@ -7,7 +7,7 @@ VOICEROID2のDLL(aitalked.dll)を直接叩いて、音声データをHTTPで取�
 ライセンス認証はDLLレベルで行われているため当然ながら動作には有効なライセンスが必要です。
 
 ## ビルドする
-Visual Studio 2017 の C#
+Visual Studio 2017にC#の開発環境をインストールしてください。
 
 ## 起動させる
 voiceroidd.exeをダブルクリックで起動するとconfig.iniが生成されます。  
@@ -18,14 +18,18 @@ config.iniに必要な設定を書き込んでもう一度、exeファイルを�
 config.iniの書式は以下の通りです。
 ```
 [Default]
-InstallPath=<VOICEROID2のインストールパス> (C:\Program Files (x86)\AHS\VOICEROID2)
-AuthCodeSeed=<認証コードのシード値> (おそらくどのコンピュータでもhttps://github.com/Nkyoku/aitalk_wrapper/raw/master/code.jpg)
-LanguageName=<言語名> (standardもしくはstandard_kansai、関西弁は未テスト)
-PhraseDictionaryPath=<フレーズ辞書のファイルパス> (使わないなら空欄)
-WordDictionaryPath=<単語辞書のファイルパス> (使わないなら空欄)
-SymbolDictionaryPath=<記号ポーズ辞書のファイルパス> (使わないなら空欄)
-VoiceName=<ボイス名> (akari_44など、インストールフォルダのVoiceフォルダ内のフォルダ名)
-ListeningAddress=<待ち受けアドレス> (http://127.0.0.1:80/など)
+InstallPath=<VOICEROID2のインストールパス>    (C:\Program Files (x86)\AHS\VOICEROID2)
+AuthCodeSeed=<認証コードのシード値>    (おそらくどのコンピュータでもhttps://github.com/Nkyoku/aitalk_wrapper/raw/master/code.jpg)
+LanguageName=<言語名>    (standardもしくはstandard_kansai、関西弁は未テスト)
+PhraseDictionaryPath=<フレーズ辞書のファイルパス>    (使わないなら空欄)
+WordDictionaryPath=<単語辞書のファイルパス> (   使わないなら空欄)
+SymbolDictionaryPath=<記号ポーズ辞書のファイルパス>    (使わないなら空欄)
+VoiceName=<ボイス名>    (akari_44など、インストールフォルダのVoiceフォルダ内のフォルダ名)
+ListeningAddress=<待ち受けアドレス>    (http://127.0.0.1:8080/など)
+```
+もし外部からの接続を待ち受ける場合、待ち受けアドレスは`http://+:8080/`などに設定し、 管理者権限でコマンドプロンプトやPowerShellを起動して以下のコマンドを入力し、アクセスを許可させてください。  
+```
+netsh http add urlacl url=http://+:8080/ user=<ユーザー名をここに入れる>
 ```
 
 ## 使い方
@@ -46,4 +50,6 @@ ListeningAddress=<待ち受けアドレス> (http://127.0.0.1:80/など)
 
 返ってくるテキストファイルはUTF-16形式、wavファイルは44.1kHz,16bit,モノラルです。
 
-
+## 謝辞
+本ソフトウェアは[mpack](https://github.com/ludocode/mpack)を使用して制作されています。  
+mpackを作成されたNicholas Fraser氏に感謝を表します。

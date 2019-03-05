@@ -8,98 +8,134 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Drawing;
 using System.Diagnostics;
+using System.ComponentModel.DataAnnotations;
+using McMaster.Extensions.CommandLineUtils;
 
-namespace voiceroid_daemon
+namespace VoiceroidDaemon
 {
+    [Command(Name = "voiceroidd", Description = "VOICEROID2 HTTP Server Daemon", ThrowOnUnexpectedArgument = false)]
+    [SuppressDefaultHelpOption]
     class Program
     {
-        // パスの最大長
-        private const int MaxPathLength = 1024;
-
-        // 設定ファイルのパス
-        private const string ConfigFilePath = ".\\config.ini";
-
-        // 設定ファイルのセクション名
-        private const string ConfigFileSection = "Default";
-
-        // VOICEROIDエディタの実行ファイル名
-        private const string VoiceroidEditor = "VoiceroidEditor.exe";
-
-        // インストールディレクトリのパス
-        private static string InstallPath = System.Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86) + "\\AHS\\VOICEROID2";
-
-        // 認証コードのシード値
-        private static string AuthCodeSeed = "";
-
-        // VOICEROID2の言語名
-        private static string LanguageName = "standard";
-
-        // フレーズ辞書へのパス
-        private static string PhraseDictionaryPath = "";
-
-        // 単語辞書へのパス
-        private static string WordDictionaryPath = "";
-
-        // 記号ポーズ辞書へのパス
-        private static string SymbolDictionaryPath = "";
-
-        // VOICEROID2の音声データベース名
-        private static string VoiceName = "";
-
-        // 待ち受けアドレス
-        private static string ListeningAddress = "http://127.0.0.1:8080/";
-        
-        // AITalkラッパーライブラリ
-        private static AITalkWrapper.AITalkWrapper SpeechEngine = null;
-        
-        // サーバーを終了させるためのCancellationToken
-        private static CancellationTokenSource StopServerCancelToken = new CancellationTokenSource();
-
-        // 設定ファイルを読み込む
-        private static void LoadConfiguration(string config_path)
+        /// <summary>
+        /// エントリーポイント
+        /// </summary>
+        /// <param name="args">コマンドライン引数</param>
+        public static int Main(string[] args)
         {
-            var sb = new StringBuilder(MaxPathLength);
+            // コマンドライン引数をパースしてOnExecute()を呼び出す
+            return CommandLineApplication.Execute<Program>(args);
+        }
+        
+        /// <summary>
+        /// 設定ファイルのパス
+        /// </summary>
+        [Option("-c", CommandOptionType.SingleValue)]
+        private string ConfigFilePath { get; } = "config.json";
 
-            IniFileHandler.GetPrivateProfileString(ConfigFileSection, "InstallPath", "", sb, MaxPathLength, ConfigFilePath);
-            InstallPath = sb.ToString();
+        /// <summary>
+        /// 動作モード。
+        /// "server"ならサーバー、"auth"なら認証コードの取得
+        /// </summary>
+        [Argument(0, Description = "auth or server")]
+        public string OperationMode { get; } = "";
+        
+        /// <summary>
+        /// プログラムの実行する
+        /// </summary>
+        private void OnExecute()
+        {
+            // 設定を読み込む
+            Config = Configuration.Load(ConfigFilePath, out bool not_exists);
+            if (not_exists == true)
+            {
+                Config.Save(ConfigFilePath);
+            }
 
-            IniFileHandler.GetPrivateProfileString(ConfigFileSection, "AuthCodeSeed", "", sb, MaxPathLength, ConfigFilePath);
-            AuthCodeSeed = sb.ToString();
+            try
+            {
+                // 動作モードに応じて処理を開始する
+                switch (OperationMode.ToLower())
+                {
+                case "auth":
+                    GetAuthCode();
+                    break;
 
-            IniFileHandler.GetPrivateProfileString(ConfigFileSection, "LanguageName", "", sb, MaxPathLength, ConfigFilePath);
-            LanguageName = sb.ToString();
+                case "server":
+                    StartServer();
+                    break;
 
-            IniFileHandler.GetPrivateProfileString(ConfigFileSection, "PhraseDictionaryPath", "", sb, MaxPathLength, ConfigFilePath);
-            PhraseDictionaryPath = sb.ToString();
+                default:
+                    // ヘルプテキストを表示する
+                    MessageBox.Show(
+$@"コマンド
+・認証コードを取得する。
+    voiceroidd auth
+・HTTPサーバーを起動する。
+    voiceroidd server
 
-            IniFileHandler.GetPrivateProfileString(ConfigFileSection, "WordDictionaryPath", "", sb, MaxPathLength, ConfigFilePath);
-            WordDictionaryPath = sb.ToString();
-
-            IniFileHandler.GetPrivateProfileString(ConfigFileSection, "SymbolDictionaryPath", "", sb, MaxPathLength, ConfigFilePath);
-            SymbolDictionaryPath = sb.ToString();
-
-            IniFileHandler.GetPrivateProfileString(ConfigFileSection, "VoiceName", "", sb, MaxPathLength, ConfigFilePath);
-            VoiceName = sb.ToString();
-
-            IniFileHandler.GetPrivateProfileString(ConfigFileSection, "ListeningAddress", "", sb, MaxPathLength, ConfigFilePath);
-            ListeningAddress = sb.ToString();
+オプション
+・設定ファイルのパスを明示的に指定する。未指定の場合は'config.json'が使用される。
+    -c <filepath>"
+                        , Caption);
+                    break;
+                }
+            }
+            catch(Exception ex)
+            {
+                MessageBox.Show(ex.ToString(), Caption, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
-        // 設定ファイルを保存する
-        private static void SaveConfiguration(string config_path)
+        /// <summary>
+        /// 認証コードを取得して設定ファイルに記録するモード
+        /// </summary>
+        private void GetAuthCode()
         {
-            IniFileHandler.WritePrivateProfileString(ConfigFileSection, "InstallPath", InstallPath, ConfigFilePath);
-            IniFileHandler.WritePrivateProfileString(ConfigFileSection, "AuthCodeSeed", AuthCodeSeed, ConfigFilePath);
-            IniFileHandler.WritePrivateProfileString(ConfigFileSection, "LanguageName", LanguageName, ConfigFilePath);
-            IniFileHandler.WritePrivateProfileString(ConfigFileSection, "PhraseDictionaryPath", PhraseDictionaryPath, ConfigFilePath);
-            IniFileHandler.WritePrivateProfileString(ConfigFileSection, "WordDictionaryPath", WordDictionaryPath, ConfigFilePath);
-            IniFileHandler.WritePrivateProfileString(ConfigFileSection, "SymbolDictionaryPath", SymbolDictionaryPath, ConfigFilePath);
-            IniFileHandler.WritePrivateProfileString(ConfigFileSection, "VoiceName", VoiceName, ConfigFilePath);
-            IniFileHandler.WritePrivateProfileString(ConfigFileSection, "ListeningAddress", ListeningAddress, ConfigFilePath);
+            DialogResult result;
+            result = MessageBox.Show(
+                "DLLの初期化に必要な認証コードをVOICEROID2エディタから取得します。\nVOICEROID2エディタを起動してください。",
+                Caption, MessageBoxButtons.OKCancel);
+            if (result != DialogResult.OK)
+            {
+                MessageBox.Show("認証コードの取得は中断されました。", Caption);
+            }
+            else
+            {
+                string auth_code_seed = Injecter.GetKey();
+                if (auth_code_seed == null)
+                {
+                    MessageBox.Show("認証コードの取得に失敗しました。", Caption);
+                }
+                else
+                {
+                    result = MessageBox.Show(
+                        $"認証コード'{auth_code_seed}'を取得しました。\n設定を{ConfigFilePath}に保存しますか?",
+                        Caption, MessageBoxButtons.YesNo);
+                    if (result != DialogResult.Yes)
+                    {
+                        MessageBox.Show("認証コードは保存されませんでした。", Caption);
+                    }
+                    else
+                    {
+                        Config.AuthCodeSeed = auth_code_seed;
+                        if (Config.Save(ConfigFilePath) == true)
+                        {
+                            MessageBox.Show("設定を保存しました。", Caption);
+                        }
+                        else
+                        {
+                            MessageBox.Show("設定の保存に失敗しました。", Caption);
+                        }
+                    }
+                }
+            }
         }
 
-        // エントリーポイント
-        static void Main(string[] args)
+        /// <summary>
+        /// HTTPサーバーを起動するモード
+        /// </summary>
+        private void StartServer()
         {
 #if DEBUG
             // Debugビルドの場合、ログファイルを出力する
@@ -107,61 +143,36 @@ namespace voiceroid_daemon
             Trace.AutoFlush = true;
 #endif
 
-            // 設定ファイルを読み込む
-            // ファイルが存在しない場合は作成し、一旦終了する
-            if (File.Exists(ConfigFilePath) == true)
+            // AITalkを初期化する
+            AitalkWrapper.Initialize(Config.InstallPath, Config.AuthCodeSeed);
+
+            // 言語ファイルを読み込む
+            AitalkWrapper.LoadLanguage(Config.InstallPath, Config.LanguageName);
+
+            // フレーズ辞書が設定されていれば読み込む
+            if (File.Exists(Config.PhraseDictionaryPath))
             {
-                LoadConfiguration(ConfigFilePath);
+                AitalkWrapper.ReloadPhraseDictionary(Config.PhraseDictionaryPath);
             }
-            else
+
+            // 単語辞書が設定されていれば読み込む
+            if (File.Exists(Config.WordDictionaryPath))
             {
-                MessageBox.Show(String.Format("設定ファイル'{0}'の読み込みに失敗しました。", ConfigFilePath));
-                SaveConfiguration(ConfigFilePath);
-                if (File.Exists(ConfigFilePath) == true)
-                {
-                    MessageBox.Show(String.Format("設定ファイル'{0}'を新規に作成しましたので、設定を入力して再び起動してください。", ConfigFilePath));
-                }
-                else
-                {
-                    MessageBox.Show(String.Format("設定ファイル'{0}'を新規に作成しようと試みましたが失敗しました。", ConfigFilePath));
-                }
-                return;
+                AitalkWrapper.ReloadWordDictionary(Config.WordDictionaryPath);
             }
+
+            // 記号ポーズ辞書が設定されていれば読み込む
+            if (File.Exists(Config.SymbolDictionaryPath))
+            {
+                AitalkWrapper.ReloadSymbolDictionary(Config.SymbolDictionaryPath);
+            }
+
+            // 音声データベースを読み込む
+            AitalkWrapper.LoadVoice(Config.VoiceDbName);
+
+            // 話者を設定する
+            AitalkWrapper.Parameter.CurrentVoiceName = Config.VoiceName;
             
-            // AITalkの初期化を行う
-            try
-            {
-                // AITalkを開く
-                SpeechEngine = new AITalkWrapper.AITalkWrapper();
-                if (SpeechEngine.OpenLibrary(InstallPath, AuthCodeSeed, AITalkWrapper.AITalkWrapper.DefaultTimeOut) == false)
-                    throw new Exception(SpeechEngine.GetLastError());
-
-                // 言語ファイルを読み込む
-                if (SpeechEngine.LoadLanguage(LanguageName) == false)
-                    throw new Exception(SpeechEngine.GetLastError());
-
-                // フレーズ辞書が設定されていれば読み込む
-                if ((0 < PhraseDictionaryPath.Length) && (SpeechEngine.LoadPhraseDictionary(PhraseDictionaryPath) == false))
-                    throw new Exception(SpeechEngine.GetLastError());
-
-                // 単語辞書が設定されていれば読み込む
-                if ((0 < WordDictionaryPath.Length) && (SpeechEngine.LoadWordDictionary(WordDictionaryPath) == false))
-                    throw new Exception(SpeechEngine.GetLastError());
-
-                // 記号ポーズ辞書が設定されていれば読み込む
-                if ((0 < SymbolDictionaryPath.Length) && (SpeechEngine.LoadSymbolDictionary(SymbolDictionaryPath) == false))
-                    throw new Exception(SpeechEngine.GetLastError());
-
-                // 音声データベースを読み込む
-                if (SpeechEngine.LoadVoice(VoiceName) == false)
-                    throw new Exception(SpeechEngine.GetLastError());
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.ToString());
-                return;
-            }
-
             // 処理を別スレッドで実行する
             Task task = Task.Factory.StartNew(Run);
 
@@ -170,13 +181,13 @@ namespace voiceroid_daemon
             NotifyIcon notify_icon = new NotifyIcon();
             try
             {
-                notify_icon.Icon = Icon.ExtractAssociatedIcon(InstallPath + "\\" + VoiceroidEditor);
+                notify_icon.Icon = Icon.ExtractAssociatedIcon($"{Config.InstallPath}\\{Config.VoiceroidEditorExe}");
             }
             catch (Exception)
             {
                 notify_icon.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
             }
-            notify_icon.Text = $"voiceroidd : {VoiceName}\nListening at {ListeningAddress}";
+            notify_icon.Text = $"{Caption} : {Config.VoiceName}\nListening at {Config.ListeningAddress}";
             notify_icon.Visible = true;
 
             // トレイアイコンのコンテキストメニューを作成する
@@ -190,40 +201,41 @@ namespace voiceroid_daemon
                 Environment.Exit(1);
             })));
             notify_icon.ContextMenu = menu;
-            
+
             // メッセージループを開始する
             Application.Run();
         }
 
         // 処理を本体
-        private static void Run()
+        private void Run()
         {
             try
             {
                 // HTTPサーバーを開始する
                 var server = new HttpListener();
-                server.Prefixes.Add(ListeningAddress);
+                server.Prefixes.Add(Config.ListeningAddress);
                 server.Start();
-                Trace.WriteLine("HTTP server is listening at " + ListeningAddress);
+                Trace.WriteLine($"HTTP server is listening at {Config.ListeningAddress}");
                 Task server_task = WaitConnections(server, StopServerCancelToken.Token);
                 try
                 {
                     server_task.Wait();
                 }
-                catch (Exception ex) {
-                    Trace.WriteLine(String.Format("{0} : server_task.Wait()\n{1}", DateTime.Now, ex));
+                catch (Exception ex)
+                {
+                    Trace.WriteLine($"{DateTime.Now} : server_task.Wait()\n{ex}");
                 }
             }
             catch (Exception ex)
             {
-                Trace.WriteLine(String.Format("{0} : Run()\n{1}", DateTime.Now, ex));
-                MessageBox.Show(ex.ToString());
+                Trace.WriteLine($"{DateTime.Now} : Run()\n{ex}");
+                MessageBox.Show(ex.ToString(), Caption);
                 return;
             }
         }
 
         // 接続を待ち受ける
-        private static async Task WaitConnections(HttpListener server, CancellationToken cancel_token)
+        private async Task WaitConnections(HttpListener server, CancellationToken cancel_token)
         {
             cancel_token.Register(() => server.Stop());
             while (cancel_token.IsCancellationRequested == false)
@@ -236,15 +248,15 @@ namespace voiceroid_daemon
                 }
                 catch (Exception ex)
                 {
-                    Trace.WriteLine(String.Format("{0} : WaitConnections()\n{1}", DateTime.Now, ex));
-                    MessageBox.Show(ex.ToString());
+                    Trace.WriteLine($"{DateTime.Now} : WaitConnections()\n{ex}");
+                    MessageBox.Show(ex.ToString(), Caption);
                     return;
                 }
             }
         }
         
         // リクエストを処理する
-        private static void ProcessRequest(HttpListenerContext context)
+        private void ProcessRequest(HttpListenerContext context)
         {
             HttpListenerRequest request = context.Request;
             HttpListenerResponse responce = context.Response;
@@ -271,9 +283,7 @@ namespace voiceroid_daemon
                     // 変換するテキストを取得する
                     string text_encoded = raw_url.Substring(index, raw_url.Length - index);
                     string text = HttpUtility.UrlDecode(text_encoded, Encoding.UTF8);
-                    string kana = SpeechEngine.TextToKana(text, AITalkWrapper.AITalkWrapper.DefaultTimeOut);
-                    if (kana == null)
-                        throw new Exception(SpeechEngine.GetLastError());
+                    string kana = AitalkWrapper.TextToKana(text, Config.KanaTimeout);
 
                     // 仮名を返す
                     byte[] byte_data = Encoding.Unicode.GetBytes(kana);
@@ -290,7 +300,7 @@ namespace voiceroid_daemon
                         // テキストが入力されたときは仮名に変換する
                         string text_encoded = raw_url.Substring(index, raw_url.Length - index);
                         string text = HttpUtility.UrlDecode(text_encoded, Encoding.UTF8);
-                        kana = SpeechEngine.TextToKana(text, AITalkWrapper.AITalkWrapper.DefaultTimeOut);
+                        kana = AitalkWrapper.TextToKana(text, Config.KanaTimeout);
                     }
                     else if (UrlMatch(raw_url, "fromkana/", ref index) == true)
                     {
@@ -301,15 +311,13 @@ namespace voiceroid_daemon
                     {
                         throw new ArgumentException("変換するテキストが指定されていません。");
                     }
-                    if (kana == null)
-                        throw new Exception(SpeechEngine.GetLastError());
 
                     // 音声に変換する
-                    byte[] speech = SpeechEngine.KanaToSpeech(kana, AITalkWrapper.AITalkWrapper.DefaultTimeOut);
-                    if (speech == null)
-                        throw new Exception(SpeechEngine.GetLastError());
+                    var stream = new MemoryStream();
+                    AitalkWrapper.KanaToSpeech(kana, stream, Config.SpeechTimeout);
 
                     // 音声を返す
+                    byte[] speech = stream.ToArray();
                     responce.OutputStream.Write(speech, 0, speech.Length);
                     responce.ContentType = "audio/wav";
                 }
@@ -353,5 +361,18 @@ namespace voiceroid_daemon
                 return false;
             }
         }
+        
+        /// <summary>
+        /// 設定
+        /// </summary>
+        private Configuration Config;
+
+        // サーバーを終了させるためのCancellationToken
+        private CancellationTokenSource StopServerCancelToken = new CancellationTokenSource();
+
+        /// <summary>
+        /// メッセージボックスなどのキャプション
+        /// </summary>
+        private const string Caption = "Voiceroid Daemon";
     }
 }

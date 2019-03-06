@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Text;
 using System.Runtime.InteropServices;
-
+using System.Runtime.Serialization;
 namespace VoiceroidDaemon
 {
     public static class Aitalk
@@ -209,25 +209,35 @@ namespace VoiceroidDaemon
             }
 
             [StructLayout(LayoutKind.Sequential, Pack = 1, CharSet = CharSet.Ansi)]
+            [DataContract]
             public class SpeakerParam
             {
+                [DataMember]
                 [MarshalAs(UnmanagedType.ByValTStr, SizeConst = VoiceNameLength)]
                 public string VoiceName;
 
+                [DataMember]
                 public float Volume;
 
+                [DataMember]
                 public float Speed;
 
+                [DataMember]
                 public float Pitch;
 
+                [DataMember]
                 public float Range;
 
+                [DataMember]
                 public int PauseMiddle;
 
+                [DataMember]
                 public int PauseLong;
 
+                [DataMember]
                 public int PauseSentence;
 
+                [DataMember]
                 [MarshalAs(UnmanagedType.ByValTStr, SizeConst = VoiceNameLength)]
                 public string StyleRate;
             }

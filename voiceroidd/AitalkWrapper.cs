@@ -22,14 +22,15 @@ namespace VoiceroidDaemon
         {
             // aitalked.dllをロードするために
             // DLLの探索パスをVOICEROID2のディレクトリに変更する
-            SetDllDirectory(install_directory);
+            InstallDirectory = install_directory;
+            SetDllDirectory(InstallDirectory);
 
             // AITalkを初期化する
             Aitalk.Config config;
             config.VoiceDbSampleRate = VoiceSampleRate;
-            config.VoiceDbDirectory = $"{install_directory}\\Voice";
+            config.VoiceDbDirectory = $"{InstallDirectory}\\Voice";
             config.TimeoutMilliseconds = TimeoutMilliseconds;
-            config.LicensePath = $"{install_directory}\\aitalk.lic";
+            config.LicensePath = $"{InstallDirectory}\\aitalk.lic";
             config.AuthenticateCodeSeed = authenticate_code;
             config.ReservedZero = 0;
             var result = Aitalk.Result.Success;
@@ -56,21 +57,41 @@ namespace VoiceroidDaemon
         }
 
         /// <summary>
+        /// ボイスライブラリの一覧。
+        /// インストールディレクトリのVoiceフォルダの中にあるフォルダ名から生成される。
+        /// </summary>
+        public static string[] VoiceDbList
+        {
+            get
+            {
+                List<string> result = new List<string>();
+                try
+                {
+                    foreach (string path in Directory.GetDirectories($"{InstallDirectory}\\Voice"))
+                    {
+                        result.Add(Path.GetFileName(path));
+                    }
+                }
+                catch (Exception) { }
+                return result.ToArray();
+            }
+        }
+        
+        /// <summary>
         /// 言語データを読み込む
         /// </summary>
-        /// <param name="install_directory">VOICEROID2のインストールディレクトリ</param>
         /// <param name="language_name">言語名</param>
-        public static void LoadLanguage(string install_directory, string language_name)
+        public static void LoadLanguage(string language_name)
         {
             // 言語の設定をする際はカレントディレクトリを一時的にVOICEROID2のインストールディレクトリに変更する
             // それ以外ではLangLoad()はエラーを返す
             string current_directory = System.IO.Directory.GetCurrentDirectory();
-            System.IO.Directory.SetCurrentDirectory(install_directory);
+            System.IO.Directory.SetCurrentDirectory(InstallDirectory);
             Aitalk.Result result;
             result = Aitalk.LangClear();
             if ((result == Aitalk.Result.Success) || (result == Aitalk.Result.NotLoaded))
             {
-                result = Aitalk.LangLoad($"{install_directory}\\Lang\\{language_name}");
+                result = Aitalk.LangLoad($"{InstallDirectory}\\Lang\\{language_name}");
             }
             System.IO.Directory.SetCurrentDirectory(current_directory);
             if (result != Aitalk.Result.Success)
@@ -151,19 +172,19 @@ namespace VoiceroidDaemon
         /// <summary>
         /// ボイスライブラリを読み込む
         /// </summary>
-        /// <param name="voice_name">ボイスライブラリ名</param>
-        public static void LoadVoice(string voice_name)
+        /// <param name="voice_db_name">ボイスライブラリ名</param>
+        public static void LoadVoice(string voice_db_name)
         {
             Aitalk.VoiceClear();
-            if (voice_name == null)
+            if (voice_db_name == null)
             {
                 return;
             }
             Aitalk.Result result;
-            result = Aitalk.VoiceLoad(voice_name);
+            result = Aitalk.VoiceLoad(voice_db_name);
             if (result != Aitalk.Result.Success)
             {
-                throw new AitalkException($"ボイスライブラリ'{voice_name}'の読み込みに失敗しました。", result);
+                throw new AitalkException($"ボイスライブラリ'{voice_db_name}'の読み込みに失敗しました。", result);
             }
             
             // パラメータを読み込む
@@ -174,7 +195,7 @@ namespace VoiceroidDaemon
             tts_param.PauseBegin = 0;
             tts_param.PauseTerm = 0;
             tts_param.ExtendFormatFlags = Aitalk.ExtendFormat.JeitaRuby | Aitalk.ExtendFormat.AutoBookmark;
-            Parameter = new AitalkParameter(tts_param, speaker_params);
+            Parameter = new AitalkParameter(voice_db_name, tts_param, speaker_params);
         }
 
         /// <summary>
@@ -278,7 +299,7 @@ namespace VoiceroidDaemon
             UpdateParameter();
 
             // ShiftJISに変換する
-            UnicodeToShiftJis(text, out byte[] shiftjis_bytes, out int[] shiftjis_to_unicode);
+            UnicodeToShiftJis(text, out byte[] shiftjis_bytes, out int[] shiftjis_positions);
 
             // コールバックメソッドとの同期オブジェクトを用意する
             KanaJobData job_data = new KanaJobData();
@@ -320,9 +341,9 @@ namespace VoiceroidDaemon
                 gc_handle.Free();
             }
             
-            // 変換結果に含まれるIrq MARKのバイト位置をUnicodeの文字の位置へ置き換える
+            // 変換結果に含まれるIrq MARKのバイト位置を文字位置へ置き換える
             Encoding encoding = Encoding.GetEncoding(932);
-            return ReplaceIrqMark(encoding.GetString(job_data.Output.ToArray()), shiftjis_to_unicode);
+            return ReplaceIrqMark(encoding.GetString(job_data.Output.ToArray()), shiftjis_positions);
         }
 
         /// <summary>
@@ -331,15 +352,15 @@ namespace VoiceroidDaemon
         /// </summary>
         /// <param name="unicode_string">UTF-16文字列</param>
         /// <param name="shiftjis_string">ShiftJIS文字列</param>
-        /// <param name="shiftjis_to_unicode">ShiftJISとUTF-16のバイト・ワード位置の変換テーブル</param>
-        private static void UnicodeToShiftJis(string unicode_string, out byte[] shiftjis_string, out int[] shiftjis_to_unicode)
+        /// <param name="shiftjis_positions">ShiftJISのバイト位置と文字位置の変換テーブル</param>
+        private static void UnicodeToShiftJis(string unicode_string, out byte[] shiftjis_string, out int[] shiftjis_positions)
         {
             // 文字位置とUTF-16上でのワード位置の変換テーブルを取得し、
             // ShiftJIS上でのバイト位置とUTF-16上でのワード位置の変換テーブルを計算する
             Encoding encoding = Encoding.GetEncoding(932);
             byte[] shiftjis_string_internal = encoding.GetBytes(unicode_string);
             int shiftjis_length = shiftjis_string_internal.Length;
-            shiftjis_to_unicode = new int[shiftjis_length + 1];
+            shiftjis_positions = new int[shiftjis_length + 1];
             char[] unicode_char_array = unicode_string.ToArray();
             int[] unicode_indexes = StringInfo.ParseCombiningCharacters(unicode_string);
             int char_count = unicode_indexes.Length;
@@ -351,11 +372,11 @@ namespace VoiceroidDaemon
                 int shiftjis_count = encoding.GetByteCount(unicode_char_array, unicode_index, unicode_count);
                 for (int offset = 0; offset < shiftjis_count; offset++)
                 {
-                    shiftjis_to_unicode[shiftjis_index + offset] = unicode_index;
+                    shiftjis_positions[shiftjis_index + offset] = char_index;
                 }
                 shiftjis_index += shiftjis_count;
             }
-            shiftjis_to_unicode[shiftjis_length] = unicode_string.Length;
+            shiftjis_positions[shiftjis_length] = char_count;
             
             // ヌル終端を付け加える
             shiftjis_string = new byte[shiftjis_length + 1];
@@ -364,15 +385,15 @@ namespace VoiceroidDaemon
         }
 
         /// <summary>
-        /// Irq MARKによる文節位置をUTF-16のワード位置に置き換える
+        /// Irq MARKによる文節位置を実際の文字位置に置き換える
         /// </summary>
         /// <param name="input">文字列</param>
-        /// <param name="shiftjis_to_unicode">ShiftJISとUTF-16のバイト・ワード位置の変換テーブル</param>
+        /// <param name="shiftjis_positions">ShiftJISのバイト位置と文字位置の変換テーブル</param>
         /// <returns>変換された文字列</returns>
-        private static string ReplaceIrqMark(string input, int[] shiftjis_to_unicode)
+        private static string ReplaceIrqMark(string input, int[] shiftjis_positions)
         {
             StringBuilder output = new StringBuilder();
-            int shiftjis_length = shiftjis_to_unicode.Length;
+            int shiftjis_length = shiftjis_positions.Length;
             int index = 0;
             const string StartOfIrqMark = "(Irq MARK=_AI@";
             const string EndOfIrqMask = ")";
@@ -400,7 +421,7 @@ namespace VoiceroidDaemon
                 {
                     throw new AitalkException("文節位置の特定に失敗しました。");
                 }
-                output.Append(shiftjis_to_unicode[shiftjis_index]);
+                output.Append(shiftjis_positions[shiftjis_index]);
                 output.Append(EndOfIrqMask);
                 index = end_pos + EndOfIrqMask.Length;
             }
@@ -603,6 +624,11 @@ namespace VoiceroidDaemon
         /// パラメータ
         /// </summary>
         public static AitalkParameter Parameter { get; private set; }
+
+        /// <summary>
+        /// インストールディレクトリ
+        /// </summary>
+        public static string InstallDirectory { get; private set; }
 
         /// <summary>
         /// 仮名変換のジョブを管理するクラス

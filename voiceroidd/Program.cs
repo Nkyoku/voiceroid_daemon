@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Drawing;
 using System.Diagnostics;
+using System.Runtime.Serialization.Json;
 using System.ComponentModel.DataAnnotations;
 using McMaster.Extensions.CommandLineUtils;
 
@@ -146,64 +147,71 @@ $@"コマンド
             // AITalkを初期化する
             AitalkWrapper.Initialize(Config.InstallPath, Config.AuthCodeSeed);
 
-            // 言語ファイルを読み込む
-            AitalkWrapper.LoadLanguage(Config.InstallPath, Config.LanguageName);
-
-            // フレーズ辞書が設定されていれば読み込む
-            if (File.Exists(Config.PhraseDictionaryPath))
-            {
-                AitalkWrapper.ReloadPhraseDictionary(Config.PhraseDictionaryPath);
-            }
-
-            // 単語辞書が設定されていれば読み込む
-            if (File.Exists(Config.WordDictionaryPath))
-            {
-                AitalkWrapper.ReloadWordDictionary(Config.WordDictionaryPath);
-            }
-
-            // 記号ポーズ辞書が設定されていれば読み込む
-            if (File.Exists(Config.SymbolDictionaryPath))
-            {
-                AitalkWrapper.ReloadSymbolDictionary(Config.SymbolDictionaryPath);
-            }
-
-            // 音声データベースを読み込む
-            AitalkWrapper.LoadVoice(Config.VoiceDbName);
-
-            // 話者を設定する
-            AitalkWrapper.Parameter.CurrentVoiceName = Config.VoiceName;
-            
-            // 処理を別スレッドで実行する
-            Task task = Task.Factory.StartNew(Run);
-
-            // トレイアイコンを作成する
-            // アイコンはVOICEROIDエディタのものを使用するが、ダメならこの実行ファイルのものを使用する
-            NotifyIcon notify_icon = new NotifyIcon();
             try
             {
-                notify_icon.Icon = Icon.ExtractAssociatedIcon($"{Config.InstallPath}\\{Config.VoiceroidEditorExe}");
-            }
-            catch (Exception)
-            {
-                notify_icon.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
-            }
-            notify_icon.Text = $"{Caption} : {Config.VoiceName}\nListening at {Config.ListeningAddress}";
-            notify_icon.Visible = true;
+                // 言語ファイルを読み込む
+                AitalkWrapper.LoadLanguage(Config.LanguageName);
 
-            // トレイアイコンのコンテキストメニューを作成する
-            ContextMenu menu = new ContextMenu();
-            menu.MenuItems.Add(new MenuItem("Exit", new EventHandler((object sender, EventArgs e) =>
-            {
-                StopServerCancelToken.Cancel();
-                task.Wait();
-                notify_icon.Visible = false;
-                Application.Exit();
-                Environment.Exit(1);
-            })));
-            notify_icon.ContextMenu = menu;
+                // フレーズ辞書が設定されていれば読み込む
+                if (File.Exists(Config.PhraseDictionaryPath))
+                {
+                    AitalkWrapper.ReloadPhraseDictionary(Config.PhraseDictionaryPath);
+                }
 
-            // メッセージループを開始する
-            Application.Run();
+                // 単語辞書が設定されていれば読み込む
+                if (File.Exists(Config.WordDictionaryPath))
+                {
+                    AitalkWrapper.ReloadWordDictionary(Config.WordDictionaryPath);
+                }
+
+                // 記号ポーズ辞書が設定されていれば読み込む
+                if (File.Exists(Config.SymbolDictionaryPath))
+                {
+                    AitalkWrapper.ReloadSymbolDictionary(Config.SymbolDictionaryPath);
+                }
+
+                // 音声データベースを読み込む
+                AitalkWrapper.LoadVoice(Config.VoiceDbName);
+
+                // 話者を設定する
+                AitalkWrapper.Parameter.CurrentVoiceName = Config.VoiceName;
+
+                // 処理を別スレッドで実行する
+                Task task = Task.Factory.StartNew(Run);
+
+                // トレイアイコンを作成する
+                // アイコンはVOICEROIDエディタのものを使用するが、ダメならこの実行ファイルのものを使用する
+                NotifyIcon notify_icon = new NotifyIcon();
+                try
+                {
+                    notify_icon.Icon = Icon.ExtractAssociatedIcon($"{Config.InstallPath}\\{Config.VoiceroidEditorExe}");
+                }
+                catch (Exception)
+                {
+                    notify_icon.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+                }
+                notify_icon.Text = $"{Caption} : {Config.VoiceName}\nListening at {Config.ListeningAddress}";
+                notify_icon.Visible = true;
+
+                // トレイアイコンのコンテキストメニューを作成する
+                ContextMenu menu = new ContextMenu();
+                menu.MenuItems.Add(new MenuItem("Exit", new EventHandler((object sender, EventArgs e) =>
+                {
+                    StopServerCancelToken.Cancel();
+                    task.Wait();
+                    notify_icon.Visible = false;
+                    Application.Exit();
+                    Environment.Exit(1);
+                })));
+                notify_icon.ContextMenu = menu;
+
+                // メッセージループを開始する
+                Application.Run();
+            }
+            finally
+            {
+                Aitalk.End();
+            }
         }
 
         // 処理を本体
@@ -268,44 +276,45 @@ $@"コマンド
                     throw new NotImplementedException();
                 }
 
-                int index = 1;
-                string raw_url = request.RawUrl;
-
+                int offset = 0;
+                string path = request.RawUrl.Substring(1);
+                var query = HttpUtility.ParseQueryString(request.Url.Query);
+                
                 // メソッド名を調べる
-                if (UrlMatch(raw_url, "kana/", ref index) == true)
+                if (UrlMatch(path, "kana/", ref offset) == true)
                 {
                     // 仮名変換メソッドを呼び出している
-                    if (UrlMatch(raw_url, "fromtext/", ref index) == false)
+                    if (UrlMatch(path, "fromtext/", ref offset) == false)
                     {
                         throw new ArgumentException("変換するテキストが指定されていません。");
                     }
 
                     // 変換するテキストを取得する
-                    string text_encoded = raw_url.Substring(index, raw_url.Length - index);
-                    string text = HttpUtility.UrlDecode(text_encoded, Encoding.UTF8);
+                    string text_encoded = path.Substring(offset, path.Length - offset);
+                    string text = HttpUtility.UrlDecode(text_encoded);
                     string kana = AitalkWrapper.TextToKana(text, Config.KanaTimeout);
 
                     // 仮名を返す
-                    byte[] byte_data = Encoding.Unicode.GetBytes(kana);
-                    responce.OutputStream.Write(byte_data, 0, byte_data.Length);
-                    responce.ContentEncoding = Encoding.Unicode;
+                    byte[] result = Encoding.UTF8.GetBytes(kana);
+                    responce.OutputStream.Write(result, 0, result.Length);
+                    responce.ContentEncoding = Encoding.UTF8;
                     responce.ContentType = "text/plain";
                 }
-                else if (UrlMatch(raw_url, "speech/", ref index) == true)
+                else if (UrlMatch(path, "speech/", ref offset) == true)
                 {
                     // 音声変換メソッドを呼び出している
                     string kana = null;
-                    if (UrlMatch(raw_url, "fromtext/", ref index) == true)
+                    if (UrlMatch(path, "fromtext/", ref offset) == true)
                     {
                         // テキストが入力されたときは仮名に変換する
-                        string text_encoded = raw_url.Substring(index, raw_url.Length - index);
-                        string text = HttpUtility.UrlDecode(text_encoded, Encoding.UTF8);
+                        string text_encoded = path.Substring(offset, path.Length - offset);
+                        string text = HttpUtility.UrlDecode(text_encoded);
                         kana = AitalkWrapper.TextToKana(text, Config.KanaTimeout);
                     }
-                    else if (UrlMatch(raw_url, "fromkana/", ref index) == true)
+                    else if (UrlMatch(path, "fromkana/", ref offset) == true)
                     {
-                        string kana_encoded = raw_url.Substring(index, raw_url.Length - index);
-                        kana = HttpUtility.UrlDecode(kana_encoded, Encoding.UTF8);
+                        string kana_encoded = path.Substring(offset, path.Length - offset);
+                        kana = HttpUtility.UrlDecode(kana_encoded);
                     }
                     else
                     {
@@ -317,9 +326,31 @@ $@"コマンド
                     AitalkWrapper.KanaToSpeech(kana, stream, Config.SpeechTimeout);
 
                     // 音声を返す
-                    byte[] speech = stream.ToArray();
-                    responce.OutputStream.Write(speech, 0, speech.Length);
+                    byte[] result = stream.ToArray();
+                    responce.OutputStream.Write(result, 0, result.Length);
                     responce.ContentType = "audio/wav";
+                }
+                else if (path == "voicedb.json")
+                {
+                    // ボイスライブラリの一覧を返す
+                    string[] voice_db_list = AitalkWrapper.VoiceDbList;
+                    using (var stream = new MemoryStream())
+                    {
+                        var serializer = new DataContractJsonSerializer(typeof(string[]));
+                        serializer.WriteObject(stream, voice_db_list);
+                        byte[] result = stream.ToArray();
+                        responce.OutputStream.Write(result, 0, result.Length);
+                        responce.ContentEncoding = Encoding.UTF8;
+                        responce.ContentType = "application/json";
+                    }
+                }
+                else if (path == "param.json")
+                {
+                    // TTSパラメータを返す
+                    byte[] result = AitalkWrapper.Parameter.ToJson();
+                    responce.OutputStream.Write(result, 0, result.Length);
+                    responce.ContentEncoding = Encoding.UTF8;
+                    responce.ContentType = "application/json";
                 }
                 else
                 {
@@ -349,11 +380,11 @@ $@"コマンド
         }
 
         // subpathがurlのパスの一部に一致するか調べ、一致したら次の部分パスを比較できるようにインデックスをずらす
-        private static bool UrlMatch(string url, string subpath, ref int index)
+        private static bool UrlMatch(string url, string subpath, ref int offset)
         {
-            if (string.Compare(url, index, subpath, 0, subpath.Length) == 0)
+            if (string.Compare(url, offset, subpath, 0, subpath.Length) == 0)
             {
-                index += subpath.Length;
+                offset += subpath.Length;
                 return true;
             }
             else

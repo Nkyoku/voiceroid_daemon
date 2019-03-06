@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
+using System.IO;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Json;
 
 namespace VoiceroidDaemon
 {
@@ -11,13 +13,39 @@ namespace VoiceroidDaemon
         /// <summary>
         /// コンストラクタ。
         /// </summary>
+        /// <param name="voice_db_name">ボイスライブラリ名</param>
         /// <param name="tts_param">パラメータ</param>
         /// <param name="speaker_params">話者のパラメータリスト</param>
-        internal AitalkParameter(Aitalk.TtsParam tts_param, Aitalk.TtsParam.SpeakerParam[] speaker_params)
+        internal AitalkParameter(string voice_db_name, Aitalk.TtsParam tts_param, Aitalk.TtsParam.SpeakerParam[] speaker_params)
         {
+            VoiceDbName = voice_db_name;
             TtsParam = tts_param;
             SpeakerParameters = speaker_params;
             CurrentVoiceName = SpeakerParameters[0].VoiceName;
+        }
+
+        /// <summary>
+        /// JSON形式のバイト列に変換する
+        /// </summary>
+        /// <returns>JSON形式のバイト列</returns>
+        public byte[] ToJson()
+        {
+            // 一時的な構造体にパラメータを格納する
+            ParameterJson parameter;
+            parameter.VoiceDbName = VoiceDbName;
+            parameter.Speakers = SpeakerParameters;
+
+            // JSONにシリアライズする
+            using (var stream = new MemoryStream())
+            {
+                using (var writer = JsonReaderWriterFactory.CreateJsonWriter(stream, Encoding.UTF8, true, true, "  "))
+                {
+                    var serializer = new DataContractJsonSerializer(typeof(ParameterJson));
+                    serializer.WriteObject(writer, parameter);
+                    writer.Flush();
+                }
+                return stream.ToArray();
+            }
         }
 
         /// <summary>
@@ -264,7 +292,12 @@ namespace VoiceroidDaemon
         }
         public const int MinPauseSentence = 0;
         public const int MaxPauseSentence = 10000;
-        
+
+        /// <summary>
+        /// ボイスライブラリ名
+        /// </summary>
+        internal string VoiceDbName;
+
         /// <summary>
         /// TTSパラメータ
         /// </summary>
@@ -279,5 +312,18 @@ namespace VoiceroidDaemon
         /// 選択されている話者のパラメータ
         /// </summary>
         private Aitalk.TtsParam.SpeakerParam CurrentSpeakerParameter;
+
+        /// <summary>
+        /// JSONに変換するときに一時的に詰める構造体
+        /// </summary>
+        [DataContract]
+        private struct ParameterJson
+        {
+            [DataMember]
+            public string VoiceDbName;
+
+            [DataMember]
+            public Aitalk.TtsParam.SpeakerParam[] Speakers;
+        }
     }
 }

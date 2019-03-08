@@ -9,7 +9,7 @@ using System.Globalization;
 using System.Threading;
 using System.IO;
 
-namespace VoiceroidDaemon
+namespace Aitalk
 {
     public static class AitalkWrapper
     {
@@ -26,23 +26,23 @@ namespace VoiceroidDaemon
             SetDllDirectory(InstallDirectory);
 
             // AITalkを初期化する
-            Aitalk.Config config;
+            AitalkCore.Config config;
             config.VoiceDbSampleRate = VoiceSampleRate;
             config.VoiceDbDirectory = $"{InstallDirectory}\\Voice";
             config.TimeoutMilliseconds = TimeoutMilliseconds;
             config.LicensePath = $"{InstallDirectory}\\aitalk.lic";
             config.AuthenticateCodeSeed = authenticate_code;
             config.ReservedZero = 0;
-            var result = Aitalk.Result.Success;
+            var result = AitalkCore.Result.Success;
             try
             {
-                result = Aitalk.Init(ref config);
+                result = AitalkCore.Init(ref config);
             }
             catch (Exception e)
             {
                 throw new AitalkException($"AITalkの初期化に失敗しました。", e);
             }
-            if (result != Aitalk.Result.Success)
+            if (result != AitalkCore.Result.Success)
             {
                 throw new AitalkException($"AITalkの初期化に失敗しました。", result);
             }
@@ -53,7 +53,7 @@ namespace VoiceroidDaemon
         /// </summary>
         public static void Finish()
         {
-            Aitalk.End();
+            AitalkCore.End();
         }
 
         /// <summary>
@@ -87,14 +87,14 @@ namespace VoiceroidDaemon
             // それ以外ではLangLoad()はエラーを返す
             string current_directory = System.IO.Directory.GetCurrentDirectory();
             System.IO.Directory.SetCurrentDirectory(InstallDirectory);
-            Aitalk.Result result;
-            result = Aitalk.LangClear();
-            if ((result == Aitalk.Result.Success) || (result == Aitalk.Result.NotLoaded))
+            AitalkCore.Result result;
+            result = AitalkCore.LangClear();
+            if ((result == AitalkCore.Result.Success) || (result == AitalkCore.Result.NotLoaded))
             {
-                result = Aitalk.LangLoad($"{InstallDirectory}\\Lang\\{language_name}");
+                result = AitalkCore.LangLoad($"{InstallDirectory}\\Lang\\{language_name}");
             }
             System.IO.Directory.SetCurrentDirectory(current_directory);
-            if (result != Aitalk.Result.Success)
+            if (result != AitalkCore.Result.Success)
             {
                 throw new AitalkException($"言語'{language_name}'の読み込みに失敗しました。", result);
             }
@@ -106,18 +106,18 @@ namespace VoiceroidDaemon
         /// <param name="path">ファイルパス</param>
         public static void ReloadPhraseDictionary(string path)
         {
-            Aitalk.ReloadPhraseDic(null);
+            AitalkCore.ReloadPhraseDic(null);
             if (path == null)
             {
                 return;
             }
-            Aitalk.Result result;
-            result = Aitalk.ReloadPhraseDic(path);
-            if (result == Aitalk.Result.UserDictionaryNoEntry)
+            AitalkCore.Result result;
+            result = AitalkCore.ReloadPhraseDic(path);
+            if (result == AitalkCore.Result.UserDictionaryNoEntry)
             {
-                Aitalk.ReloadPhraseDic(null);
+                AitalkCore.ReloadPhraseDic(null);
             }
-            else if (result != Aitalk.Result.Success)
+            else if (result != AitalkCore.Result.Success)
             {
                 throw new AitalkException($"フレーズ辞書'{path}'の読み込みに失敗しました。", result);
             }
@@ -129,18 +129,18 @@ namespace VoiceroidDaemon
         /// <param name="path">ファイルパス</param>
         public static void ReloadWordDictionary(string path)
         {
-            Aitalk.ReloadWordDic(null);
+            AitalkCore.ReloadWordDic(null);
             if (path == null)
             {
                 return;
             }
-            Aitalk.Result result;
-            result = Aitalk.ReloadWordDic(path);
-            if (result == Aitalk.Result.UserDictionaryNoEntry)
+            AitalkCore.Result result;
+            result = AitalkCore.ReloadWordDic(path);
+            if (result == AitalkCore.Result.UserDictionaryNoEntry)
             {
-                Aitalk.ReloadWordDic(null);
+                AitalkCore.ReloadWordDic(null);
             }
-            else if (result != Aitalk.Result.Success)
+            else if (result != AitalkCore.Result.Success)
             {
                 throw new AitalkException($"単語辞書'{path}'の読み込みに失敗しました。", result);
             }
@@ -152,18 +152,18 @@ namespace VoiceroidDaemon
         /// <param name="path">ファイルパス</param>
         public static void ReloadSymbolDictionary(string path)
         {
-            Aitalk.ReloadSymbolDic(null);
+            AitalkCore.ReloadSymbolDic(null);
             if (path == null)
             {
                 return;
             }
-            Aitalk.Result result;
-            result = Aitalk.ReloadSymbolDic(path);
-            if (result == Aitalk.Result.UserDictionaryNoEntry)
+            AitalkCore.Result result;
+            result = AitalkCore.ReloadSymbolDic(path);
+            if (result == AitalkCore.Result.UserDictionaryNoEntry)
             {
-                Aitalk.ReloadSymbolDic(null);
+                AitalkCore.ReloadSymbolDic(null);
             }
-            else if (result != Aitalk.Result.Success)
+            else if (result != AitalkCore.Result.Success)
             {
                 throw new AitalkException($"記号ポーズ辞書'{path}'の読み込みに失敗しました。", result);
             }
@@ -175,14 +175,14 @@ namespace VoiceroidDaemon
         /// <param name="voice_db_name">ボイスライブラリ名</param>
         public static void LoadVoice(string voice_db_name)
         {
-            Aitalk.VoiceClear();
+            AitalkCore.VoiceClear();
             if (voice_db_name == null)
             {
                 return;
             }
-            Aitalk.Result result;
-            result = Aitalk.VoiceLoad(voice_db_name);
-            if (result != Aitalk.Result.Success)
+            AitalkCore.Result result;
+            result = AitalkCore.VoiceLoad(voice_db_name);
+            if (result != AitalkCore.Result.Success)
             {
                 throw new AitalkException($"ボイスライブラリ'{voice_db_name}'の読み込みに失敗しました。", result);
             }
@@ -194,7 +194,7 @@ namespace VoiceroidDaemon
             tts_param.TtsEventCallback = TtsEventCallback;
             tts_param.PauseBegin = 0;
             tts_param.PauseTerm = 0;
-            tts_param.ExtendFormatFlags = Aitalk.ExtendFormat.JeitaRuby | Aitalk.ExtendFormat.AutoBookmark;
+            tts_param.ExtendFormatFlags = AitalkCore.ExtendFormat.JeitaRuby | AitalkCore.ExtendFormat.AutoBookmark;
             Parameter = new AitalkParameter(voice_db_name, tts_param, speaker_params);
         }
 
@@ -203,13 +203,13 @@ namespace VoiceroidDaemon
         /// </summary>
         /// <param name="tts_param">パラメータ(話者パラメータを除く)</param>
         /// <param name="speaker_params">話者パラメータ</param>
-        private static void GetParameters(out Aitalk.TtsParam tts_param, out Aitalk.TtsParam.SpeakerParam[] speaker_params)
+        private static void GetParameters(out AitalkCore.TtsParam tts_param, out AitalkCore.TtsParam.SpeakerParam[] speaker_params)
         {
             // パラメータを格納するのに必要なバッファサイズを取得する
-            Aitalk.Result result;
+            AitalkCore.Result result;
             int size = 0;
-            result = Aitalk.GetParam(IntPtr.Zero, ref size);
-            if ((result != Aitalk.Result.Insufficient) || (size < Marshal.SizeOf<Aitalk.TtsParam>()))
+            result = AitalkCore.GetParam(IntPtr.Zero, ref size);
+            if ((result != AitalkCore.Result.Insufficient) || (size < Marshal.SizeOf<AitalkCore.TtsParam>()))
             {
                 throw new AitalkException("動作パラメータの長さの取得に失敗しました。", result);
             }
@@ -218,20 +218,20 @@ namespace VoiceroidDaemon
             try
             {
                 // パラメータを読み取る
-                Marshal.WriteInt32(ptr, (int)Marshal.OffsetOf<Aitalk.TtsParam>("Size"), size);
-                result = Aitalk.GetParam(ptr, ref size);
-                if (result != Aitalk.Result.Success)
+                Marshal.WriteInt32(ptr, (int)Marshal.OffsetOf<AitalkCore.TtsParam>("Size"), size);
+                result = AitalkCore.GetParam(ptr, ref size);
+                if (result != AitalkCore.Result.Success)
                 {
                     throw new AitalkException("動作パラメータの取得に失敗しました。", result);
                 }
-                tts_param = Marshal.PtrToStructure<Aitalk.TtsParam>(ptr);
+                tts_param = Marshal.PtrToStructure<AitalkCore.TtsParam>(ptr);
 
                 // 話者のパラメータを読み取る
-                speaker_params = new Aitalk.TtsParam.SpeakerParam[tts_param.NumberOfSpeakers];
+                speaker_params = new AitalkCore.TtsParam.SpeakerParam[tts_param.NumberOfSpeakers];
                 for (int index = 0; index < speaker_params.Length; index++)
                 {
-                    IntPtr speaker_ptr = IntPtr.Add(ptr, Marshal.SizeOf<Aitalk.TtsParam>() + Marshal.SizeOf<Aitalk.TtsParam.SpeakerParam>() * index);
-                    speaker_params[index] = Marshal.PtrToStructure<Aitalk.TtsParam.SpeakerParam>(speaker_ptr);
+                    IntPtr speaker_ptr = IntPtr.Add(ptr, Marshal.SizeOf<AitalkCore.TtsParam>() + Marshal.SizeOf<AitalkCore.TtsParam.SpeakerParam>() * index);
+                    speaker_params[index] = Marshal.PtrToStructure<AitalkCore.TtsParam.SpeakerParam>(speaker_ptr);
                 }
             }
             finally
@@ -246,25 +246,25 @@ namespace VoiceroidDaemon
         /// </summary>
         /// <param name="tts_param">パラメータ(話者パラメータを除く)</param>
         /// <param name="speaker_params">話者パラメータ</param>
-        private static void SetParameters(Aitalk.TtsParam tts_param, Aitalk.TtsParam.SpeakerParam[] speaker_params)
+        private static void SetParameters(AitalkCore.TtsParam tts_param, AitalkCore.TtsParam.SpeakerParam[] speaker_params)
         {
             // パラメータを格納するバッファを確保する
-            int size = Marshal.SizeOf<Aitalk.TtsParam>() + Marshal.SizeOf<Aitalk.TtsParam.SpeakerParam>() * speaker_params.Length;
+            int size = Marshal.SizeOf<AitalkCore.TtsParam>() + Marshal.SizeOf<AitalkCore.TtsParam.SpeakerParam>() * speaker_params.Length;
             IntPtr ptr = Marshal.AllocCoTaskMem(size);
             try
             {
                 // パラメータを設定する
                 tts_param.Size = size;
                 tts_param.NumberOfSpeakers = speaker_params.Length;
-                Marshal.StructureToPtr<Aitalk.TtsParam>(tts_param, ptr, false);
+                Marshal.StructureToPtr<AitalkCore.TtsParam>(tts_param, ptr, false);
                 for (int index = 0; index < speaker_params.Length; index++)
                 {
-                    IntPtr speaker_ptr = IntPtr.Add(ptr, Marshal.SizeOf<Aitalk.TtsParam>() + Marshal.SizeOf<Aitalk.TtsParam.SpeakerParam>() * index);
-                    Marshal.StructureToPtr<Aitalk.TtsParam.SpeakerParam>(speaker_params[index], speaker_ptr, false);
+                    IntPtr speaker_ptr = IntPtr.Add(ptr, Marshal.SizeOf<AitalkCore.TtsParam>() + Marshal.SizeOf<AitalkCore.TtsParam.SpeakerParam>() * index);
+                    Marshal.StructureToPtr<AitalkCore.TtsParam.SpeakerParam>(speaker_params[index], speaker_ptr, false);
                 }
-                Aitalk.Result result;
-                result = Aitalk.SetParam(ptr);
-                if (result != Aitalk.Result.Success)
+                AitalkCore.Result result;
+                result = AitalkCore.SetParam(ptr);
+                if (result != AitalkCore.Result.Success)
                 {
                     throw new AitalkException("動作パラメータの設定に失敗しました。", result);
                 }
@@ -310,14 +310,14 @@ namespace VoiceroidDaemon
             try
             {
                 // 変換を開始する
-                Aitalk.JobParam job_param;
-                job_param.ModeInOut = Aitalk.JobInOut.PlainToKana;
+                AitalkCore.JobParam job_param;
+                job_param.ModeInOut = AitalkCore.JobInOut.PlainToKana;
                 job_param.UserData = GCHandle.ToIntPtr(gc_handle);
-                Aitalk.Result result;
-                result = Aitalk.TextToKana(out int job_id, ref job_param, shiftjis_bytes);
-                if (result != Aitalk.Result.Success)
+                AitalkCore.Result result;
+                result = AitalkCore.TextToKana(out int job_id, ref job_param, shiftjis_bytes);
+                if (result != AitalkCore.Result.Success)
                 {
-                    throw new AitalkException("仮名変換が開始できませんでした。", result);
+                    throw new AitalkException($"仮名変換が開始できませんでした。[{string.Join(",", shiftjis_bytes)}]", result);
                 }
 
                 // 変換の終了を待つ
@@ -326,12 +326,12 @@ namespace VoiceroidDaemon
                 respond = job_data.CloseEvent.WaitOne((0 < timeout) ? timeout : -1);
 
                 // 変換を終了する
-                result = Aitalk.CloseKana(job_id);
+                result = AitalkCore.CloseKana(job_id);
                 if (respond == false)
                 {
                     throw new AitalkException("仮名変換がタイムアウトしました。");
                 }
-                else if (result != Aitalk.Result.Success)
+                else if (result != AitalkCore.Result.Success)
                 {
                     throw new AitalkException("仮名変換が正常に終了しませんでした。", result);
                 }
@@ -435,7 +435,7 @@ namespace VoiceroidDaemon
         /// <param name="job_id">ジョブID</param>
         /// <param name="user_data">ユーザーデータ(KanaJobDataへのポインタ)</param>
         /// <returns>ゼロを返す</returns>
-        private static int TextBufferCallback(Aitalk.EventReason reason, int job_id, IntPtr user_data)
+        private static int TextBufferCallback(AitalkCore.EventReason reason, int job_id, IntPtr user_data)
         {
             GCHandle gc_handle = GCHandle.FromIntPtr(user_data);
             KanaJobData job_data = gc_handle.Target as KanaJobData;
@@ -447,19 +447,19 @@ namespace VoiceroidDaemon
             // 変換できた分だけGetKana()で読み取ってjob_dataのバッファに格納する
             int buffer_capacity = job_data.BufferCapacity;
             byte[] buffer = new byte[buffer_capacity];
-            Aitalk.Result result;
+            AitalkCore.Result result;
             int read_bytes;
             do
             {
-                result = Aitalk.GetKana(job_id, buffer, buffer_capacity, out read_bytes, out _);
-                if (result != Aitalk.Result.Success)
+                result = AitalkCore.GetKana(job_id, buffer, buffer_capacity, out read_bytes, out _);
+                if (result != AitalkCore.Result.Success)
                 {
                     break;
                 }
                 job_data.Output.AddRange(new ArraySegment<byte>(buffer, 0, read_bytes));
             }
             while ((buffer_capacity - 1) <= read_bytes);
-            if (reason == Aitalk.EventReason.TextBufferClose)
+            if (reason == AitalkCore.EventReason.TextBufferClose)
             {
                 job_data.CloseEvent.Set();
             }
@@ -487,12 +487,12 @@ namespace VoiceroidDaemon
             try
             {
                 // 変換を開始する
-                Aitalk.JobParam job_param;
-                job_param.ModeInOut = Aitalk.JobInOut.KanaToWave;
+                AitalkCore.JobParam job_param;
+                job_param.ModeInOut = AitalkCore.JobInOut.KanaToWave;
                 job_param.UserData = GCHandle.ToIntPtr(gc_handle);
-                Aitalk.Result result;
-                result = Aitalk.TextToSpeech(out int job_id, ref job_param, kana);
-                if (result != Aitalk.Result.Success)
+                AitalkCore.Result result;
+                result = AitalkCore.TextToSpeech(out int job_id, ref job_param, kana);
+                if (result != AitalkCore.Result.Success)
                 {
                     throw new AitalkException("音声変換が開始できませんでした。", result);
                 }
@@ -503,12 +503,12 @@ namespace VoiceroidDaemon
                 respond = job_data.CloseEvent.WaitOne((0 < timeout) ? timeout : -1);
 
                 // 変換を終了する
-                result = Aitalk.CloseSpeech(job_id);
+                result = AitalkCore.CloseSpeech(job_id);
                 if (respond == false)
                 {
                     throw new AitalkException("音声変換がタイムアウトしました。");
                 }
-                else if (result != Aitalk.Result.Success)
+                else if (result != AitalkCore.Result.Success)
                 {
                     throw new AitalkException("音声変換が正常に終了しませんでした。", result);
                 }
@@ -561,7 +561,7 @@ namespace VoiceroidDaemon
         /// <param name="tick">時刻[ms]</param>
         /// <param name="user_data">ユーザーデータ(SpeechJobDataへのポインタ)</param>
         /// <returns>ゼロを返す</returns>
-        private static int RawBufferCallback(Aitalk.EventReason reason, int job_id, long tick, IntPtr user_data)
+        private static int RawBufferCallback(AitalkCore.EventReason reason, int job_id, long tick, IntPtr user_data)
         {
             GCHandle gc_handle = GCHandle.FromIntPtr(user_data);
             SpeechJobData job_data = gc_handle.Target as SpeechJobData;
@@ -573,19 +573,19 @@ namespace VoiceroidDaemon
             // 変換できた分だけGetData()で読み取ってjob_dataのバッファに格納する
             int buffer_capacity = job_data.BufferCapacity;
             byte[] buffer = new byte[2 * buffer_capacity];
-            Aitalk.Result result;
+            AitalkCore.Result result;
             int read_samples;
             do
             {
-                result = Aitalk.GetData(job_id, buffer, buffer_capacity, out read_samples);
-                if (result != Aitalk.Result.Success)
+                result = AitalkCore.GetData(job_id, buffer, buffer_capacity, out read_samples);
+                if (result != AitalkCore.Result.Success)
                 {
                     break;
                 }
                 job_data.Output.AddRange(new ArraySegment<byte>(buffer, 0, 2 * read_samples));
             }
             while ((buffer_capacity - 1) <= read_samples);
-            if (reason == Aitalk.EventReason.RawBufferClose)
+            if (reason == AitalkCore.EventReason.RawBufferClose)
             {
                 job_data.CloseEvent.Set();
             }
@@ -601,7 +601,7 @@ namespace VoiceroidDaemon
         /// <param name="name">イベントの値</param>
         /// <param name="user_data">ユーザーデータ(SpeechJobDataへのポインタ)</param>
         /// <returns>ゼロを返す</returns>
-        private static int TtsEventCallback(Aitalk.EventReason reason, int job_id, long tick, string name, IntPtr user_data)
+        private static int TtsEventCallback(AitalkCore.EventReason reason, int job_id, long tick, string name, IntPtr user_data)
         {
             GCHandle gc_handle = GCHandle.FromIntPtr(user_data);
             SpeechJobData job_data = gc_handle.Target as SpeechJobData;
@@ -611,9 +611,9 @@ namespace VoiceroidDaemon
             }
             switch (reason)
             {
-            case Aitalk.EventReason.PhoneticLabel:
-            case Aitalk.EventReason.Bookmark:
-            case Aitalk.EventReason.AutoBookmark:
+            case AitalkCore.EventReason.PhoneticLabel:
+            case AitalkCore.EventReason.Bookmark:
+            case AitalkCore.EventReason.AutoBookmark:
                 job_data.EventData.Add(new TtsEventData(tick, name, reason));
                 break;
             }
@@ -666,19 +666,19 @@ namespace VoiceroidDaemon
             [DataMember]
             public string Type;
 
-            public TtsEventData(long tick, string value, Aitalk.EventReason reason)
+            internal TtsEventData(long tick, string value, AitalkCore.EventReason reason)
             {
                 Tick = tick;
                 Value = value;
                 switch (reason)
                 {
-                case Aitalk.EventReason.PhoneticLabel:
+                case AitalkCore.EventReason.PhoneticLabel:
                     Type = "Phonetic";
                     break;
-                case Aitalk.EventReason.Bookmark:
+                case AitalkCore.EventReason.Bookmark:
                     Type = "Bookmark";
                     break;
-                case Aitalk.EventReason.AutoBookmark:
+                case AitalkCore.EventReason.AutoBookmark:
                     Type = "AutoBookmark";
                     break;
                 default:
@@ -713,7 +713,7 @@ namespace VoiceroidDaemon
         public AitalkException(string message)
             : base(message) { }
 
-        public AitalkException(string message, Aitalk.Result result)
+        internal AitalkException(string message, AitalkCore.Result result)
             : base($"{message}({result})") { }
 
         public AitalkException(string message, Exception inner)

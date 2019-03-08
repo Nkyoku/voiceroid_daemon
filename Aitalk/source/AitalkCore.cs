@@ -2,9 +2,10 @@
 using System.Text;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
-namespace VoiceroidDaemon
+
+namespace Aitalk
 {
-    public static class Aitalk
+    internal static class AitalkCore
     {
         [DllImport("aitalked.dll", EntryPoint = "_AITalkAPI_Init@4")]
         public static extern Result Init([In] ref Config config);

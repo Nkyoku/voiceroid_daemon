@@ -11,6 +11,7 @@ using System.Diagnostics;
 using System.Runtime.Serialization.Json;
 using System.ComponentModel.DataAnnotations;
 using McMaster.Extensions.CommandLineUtils;
+using Aitalk;
 
 namespace VoiceroidDaemon
 {
@@ -210,7 +211,7 @@ $@"コマンド
             }
             finally
             {
-                Aitalk.End();
+                AitalkWrapper.Finish();
             }
         }
 
@@ -368,11 +369,11 @@ $@"コマンド
             catch (Exception ex)
             {
                 // 例外を文字列化して返す
-                byte[] byte_data = Encoding.Unicode.GetBytes(ex.ToString());
-                responce.OutputStream.Write(byte_data, 0, byte_data.Length);
-                responce.ContentEncoding = Encoding.Unicode;
-                responce.ContentType = "text/plain";
                 responce.StatusCode = (int)HttpStatusCode.InternalServerError;
+                byte[] byte_data = Encoding.UTF8.GetBytes(ex.ToString());
+                responce.OutputStream.Write(byte_data, 0, byte_data.Length);
+                responce.ContentEncoding = Encoding.UTF8;
+                responce.ContentType = "text/plain";
             }
 
             // レスポンスを返す

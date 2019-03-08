@@ -6,7 +6,7 @@ using System.IO;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 
-namespace VoiceroidDaemon
+namespace Aitalk
 {
     public class AitalkParameter
     {
@@ -16,7 +16,7 @@ namespace VoiceroidDaemon
         /// <param name="voice_db_name">ボイスライブラリ名</param>
         /// <param name="tts_param">パラメータ</param>
         /// <param name="speaker_params">話者のパラメータリスト</param>
-        internal AitalkParameter(string voice_db_name, Aitalk.TtsParam tts_param, Aitalk.TtsParam.SpeakerParam[] speaker_params)
+        internal AitalkParameter(string voice_db_name, AitalkCore.TtsParam tts_param, AitalkCore.TtsParam.SpeakerParam[] speaker_params)
         {
             VoiceDbName = voice_db_name;
             TtsParam = tts_param;
@@ -74,17 +74,17 @@ namespace VoiceroidDaemon
         /// </summary>
         public bool AutoBookmark
         {
-            get { return (TtsParam.ExtendFormatFlags & Aitalk.ExtendFormat.AutoBookmark) != 0; }
+            get { return (TtsParam.ExtendFormatFlags & AitalkCore.ExtendFormat.AutoBookmark) != 0; }
             set
             {
                 IsParameterChanged |= (value != AutoBookmark);
                 if (value == true)
                 {
-                    TtsParam.ExtendFormatFlags |= Aitalk.ExtendFormat.AutoBookmark;
+                    TtsParam.ExtendFormatFlags |= AitalkCore.ExtendFormat.AutoBookmark;
                 }
                 else
                 {
-                    TtsParam.ExtendFormatFlags &= ~Aitalk.ExtendFormat.AutoBookmark;
+                    TtsParam.ExtendFormatFlags &= ~AitalkCore.ExtendFormat.AutoBookmark;
                 }
                 
             }
@@ -95,17 +95,17 @@ namespace VoiceroidDaemon
         /// </summary>
         public bool JeitaRuby
         {
-            get { return (TtsParam.ExtendFormatFlags & Aitalk.ExtendFormat.JeitaRuby) != 0; }
+            get { return (TtsParam.ExtendFormatFlags & AitalkCore.ExtendFormat.JeitaRuby) != 0; }
             set
             {
                 IsParameterChanged |= (value != JeitaRuby);
                 if (value == true)
                 {
-                    TtsParam.ExtendFormatFlags |= Aitalk.ExtendFormat.JeitaRuby;
+                    TtsParam.ExtendFormatFlags |= AitalkCore.ExtendFormat.JeitaRuby;
                 }
                 else
                 {
-                    TtsParam.ExtendFormatFlags &= ~Aitalk.ExtendFormat.JeitaRuby;
+                    TtsParam.ExtendFormatFlags &= ~AitalkCore.ExtendFormat.JeitaRuby;
                 }
             }
         }
@@ -301,17 +301,17 @@ namespace VoiceroidDaemon
         /// <summary>
         /// TTSパラメータ
         /// </summary>
-        internal Aitalk.TtsParam TtsParam;
+        internal AitalkCore.TtsParam TtsParam;
 
         /// <summary>
         /// 話者パラメータのリスト
         /// </summary>
-        internal Aitalk.TtsParam.SpeakerParam[] SpeakerParameters;
+        internal AitalkCore.TtsParam.SpeakerParam[] SpeakerParameters;
 
         /// <summary>
         /// 選択されている話者のパラメータ
         /// </summary>
-        private Aitalk.TtsParam.SpeakerParam CurrentSpeakerParameter;
+        private AitalkCore.TtsParam.SpeakerParam CurrentSpeakerParameter;
 
         /// <summary>
         /// JSONに変換するときに一時的に詰める構造体
@@ -323,7 +323,7 @@ namespace VoiceroidDaemon
             public string VoiceDbName;
 
             [DataMember]
-            public Aitalk.TtsParam.SpeakerParam[] Speakers;
+            public AitalkCore.TtsParam.SpeakerParam[] Speakers;
         }
     }
 }

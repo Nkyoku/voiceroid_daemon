@@ -1,0 +1,40 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+@section Head {
+    <script>
+        function ConvertText() {
+            var input = document.getElementById("T2kTextInput");
+            var output = document.getElementById("T2kKanaOutput");
+            var request = new XMLHttpRequest();
+            var query = encodeURI(input.value);
+            if (0 < query.length) {
+                request.open("GET", "/api/converttext/" + query, false);
+                request.send(null);
+                if (request.status == 200) {
+                    output.value = request.responseText;
+                }
+            }
+        }
+        function SpeechText() {
+            var input = document.getElementById("T2sTextInput");
+            var query = encodeURI(input.value);
+            var audio = new Audio("/api/speechtext/" + query);
+            audio.load();
+            audio.play();
+        }
+    </script>
+}
+<h2>仮名変換</h2>
+<form>
+    <textarea id="T2kTextInput" placeholder="ここに変換する文章を入力してください。" cols="40" rows="4"></textarea>
+    <textarea id="T2kKanaOutput" placeholder="ここに変換された仮名が出力されます。" cols="40" rows="4" readonly></textarea><br />
+    <input type="button" value="変換する" onclick="ConvertText()"/>
+</form>
+<hr />
+<h2>音声変換</h2>
+<form>
+    <textarea id="T2sTextInput" placeholder="ここに話す文章を入力してください。" cols="80" rows="4"></textarea><br />
+    <input type="button" value="変換する" onclick="SpeechText()" />
+</form>
+<hr />

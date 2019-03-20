@@ -7,20 +7,35 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "voiceroidd", "voiceroidd\vo
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aitalk", "Aitalk\Aitalk.csproj", "{B78D299F-CBB0-486F-A333-4013854480A7}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VoiceroidDaemon", "VoiceroidDaemon\VoiceroidDaemon.csproj", "{AF74AC19-E106-426B-B784-3EEF41EA3B29}"
+	ProjectSection(ProjectDependencies) = postProject
+		{4841FCA9-E2DF-4412-8043-F73937D7C2F3} = {4841FCA9-E2DF-4412-8043-F73937D7C2F3}
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Injecter", "Injecter\Injecter.csproj", "{4841FCA9-E2DF-4412-8043-F73937D7C2F3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Debug|x86 = Debug|x86
-		Release|x86 = Release|x86
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{59726917-207F-4788-A149-6147E725CB85}.Debug|x86.ActiveCfg = Debug|x86
-		{59726917-207F-4788-A149-6147E725CB85}.Debug|x86.Build.0 = Debug|x86
-		{59726917-207F-4788-A149-6147E725CB85}.Release|x86.ActiveCfg = Release|x86
-		{59726917-207F-4788-A149-6147E725CB85}.Release|x86.Build.0 = Release|x86
-		{B78D299F-CBB0-486F-A333-4013854480A7}.Debug|x86.ActiveCfg = Debug|x86
-		{B78D299F-CBB0-486F-A333-4013854480A7}.Debug|x86.Build.0 = Debug|x86
-		{B78D299F-CBB0-486F-A333-4013854480A7}.Release|x86.ActiveCfg = Release|x86
-		{B78D299F-CBB0-486F-A333-4013854480A7}.Release|x86.Build.0 = Release|x86
+		{59726917-207F-4788-A149-6147E725CB85}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{59726917-207F-4788-A149-6147E725CB85}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{59726917-207F-4788-A149-6147E725CB85}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{59726917-207F-4788-A149-6147E725CB85}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B78D299F-CBB0-486F-A333-4013854480A7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B78D299F-CBB0-486F-A333-4013854480A7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B78D299F-CBB0-486F-A333-4013854480A7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B78D299F-CBB0-486F-A333-4013854480A7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AF74AC19-E106-426B-B784-3EEF41EA3B29}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AF74AC19-E106-426B-B784-3EEF41EA3B29}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AF74AC19-E106-426B-B784-3EEF41EA3B29}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AF74AC19-E106-426B-B784-3EEF41EA3B29}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4841FCA9-E2DF-4412-8043-F73937D7C2F3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4841FCA9-E2DF-4412-8043-F73937D7C2F3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4841FCA9-E2DF-4412-8043-F73937D7C2F3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4841FCA9-E2DF-4412-8043-F73937D7C2F3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

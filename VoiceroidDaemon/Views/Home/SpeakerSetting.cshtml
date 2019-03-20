@@ -1,0 +1,45 @@
+﻿@model VoiceroidDaemon.Models.SpeakerSettingModel
+@{
+    ViewData["Title"] = "話者の設定";
+    List<SelectListItem> voice_db_list_items = ViewData["VoiceDbListItems"] as List<SelectListItem>;
+    List<SelectListItem> speaker_list_items = ViewData["SpeakerListItems"] as List<SelectListItem>;
+}
+@section Head {
+    <style type="text/css">
+        label, input {
+            display: block;
+        }
+    </style>
+    <script>
+        function changeVoiceDb() {
+            var select = document.getElementById("VoiceDbName");
+            var index = select.selectedIndex;
+            if (index == 0) {
+                window.location.search = "";
+            }
+            else if (0 < index) {
+                window.location.search = "voice_db=" + select.options[index].value;
+            }
+        }
+        window.onload = function () {
+            var result = '@ViewData["Alert"]';
+            if (0 < result.length) {
+                alert(result);
+            }
+        }
+    </script>
+}
+<h2>@ViewData["Title"]</h2>
+<hr />
+@using (Html.BeginForm("SpeakerSetting", "Home", FormMethod.Post))
+{
+    @Html.LabelFor(model => model.VoiceDbName, "ボイスライブラリ");
+    @Html.DropDownListFor(model => model.VoiceDbName, voice_db_list_items, null, new { onChange = "changeVoiceDb()" });
+    <hr />
+    @Html.LabelFor(model => model.SpeakerName, "話者");
+    @Html.DropDownListFor(model => model.SpeakerName, speaker_list_items);
+    <hr />
+    <input type="submit" value="保存する" />
+}
+<hr />
+@ViewData["SelectedVoiceDb"]

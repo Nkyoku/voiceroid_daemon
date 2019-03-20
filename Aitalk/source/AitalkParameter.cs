@@ -21,7 +21,8 @@ namespace Aitalk
             VoiceDbName = voice_db_name;
             TtsParam = tts_param;
             SpeakerParameters = speaker_params;
-            CurrentVoiceName = SpeakerParameters[0].VoiceName;
+            CurrentSpeakerName = SpeakerParameters[0].VoiceName;
+            CurrentSpeakerParameter = SpeakerParameters[0];
         }
 
         /// <summary>
@@ -118,12 +119,9 @@ namespace Aitalk
             get { return TtsParam.Volume; }
             set
             {
-                if ((value < MinMasterVolume) || (MaxMasterVolume < value))
-                {
-                    throw new AitalkException("マスター音量が範囲外です。");
-                }
-                IsParameterChanged |= (MasterVolume != value);
-                TtsParam.Volume = (float)Math.Max(MinMasterVolume, Math.Min(value, MaxMasterVolume));
+                float value_f = (float)Math.Max(MinMasterVolume, Math.Min(value, MaxMasterVolume));
+                IsParameterChanged |= (value_f != TtsParam.Volume);
+                TtsParam.Volume = value_f;
             }
         }
         public const double MaxMasterVolume = 5.0;
@@ -140,7 +138,7 @@ namespace Aitalk
         /// <summary>
         /// 選択中の話者
         /// </summary>
-        public string CurrentVoiceName
+        public string CurrentSpeakerName
         {
             get { return TtsParam.VoiceName; }
             set
@@ -168,12 +166,9 @@ namespace Aitalk
             get { return CurrentSpeakerParameter.Volume; }
             set
             {
-                if ((value < MinVoiceVolume) || (MaxVoiceVolume < value))
-                {
-                    throw new AitalkException("音量が範囲外です。");
-                }
-                IsParameterChanged |= (VoiceVolume != value);
-                CurrentSpeakerParameter.Volume = (float)value;
+                float value_f = (float)Math.Max(MinVoiceVolume, Math.Min(value, MaxVoiceVolume));
+                IsParameterChanged |= (value_f != CurrentSpeakerParameter.Volume);
+                CurrentSpeakerParameter.Volume = value_f;
             }
         }
         public const double MinVoiceVolume = 0.0;
@@ -187,35 +182,29 @@ namespace Aitalk
             get { return CurrentSpeakerParameter.Speed; }
             set
             {
-                if ((value < MinVoiceSpeed) || (MaxVoiceSpeed < value))
-                {
-                    throw new AitalkException("話速が範囲外です。");
-                }
-                IsParameterChanged |= (VoiceSpeed != value);
-                CurrentSpeakerParameter.Speed = (float)value;
+                float value_f = (float)Math.Max(MinVoiceSpeed, Math.Min(value, MaxVoiceSpeed));
+                IsParameterChanged |= (value_f != CurrentSpeakerParameter.Speed);
+                CurrentSpeakerParameter.Speed = value_f;
             }
         }
         public const double MinVoiceSpeed = 0.5;
         public const double MaxVoiceSpeed = 4.0;
 
         /// <summary>
-        /// 高さ(0.5～4)
+        /// 高さ(0.5～2)
         /// </summary>
         public double VoicePitch
         {
             get { return CurrentSpeakerParameter.Pitch; }
             set
             {
-                if ((value < MinVoicePitch) || (MaxVoicePitch < value))
-                {
-                    throw new AitalkException("高さが範囲外です。");
-                }
-                IsParameterChanged |= (VoicePitch != value);
-                CurrentSpeakerParameter.Pitch = (float)value;
+                float value_f = (float)Math.Max(MinVoicePitch, Math.Min(value, MaxVoicePitch));
+                IsParameterChanged |= (value_f != CurrentSpeakerParameter.Pitch);
+                CurrentSpeakerParameter.Pitch = value_f;
             }
         }
         public const double MinVoicePitch = 0.5;
-        public const double MaxVoicePitch = 4.0;
+        public const double MaxVoicePitch = 2.0;
 
         /// <summary>
         /// 抑揚(0～2)
@@ -225,50 +214,49 @@ namespace Aitalk
             get { return CurrentSpeakerParameter.Range; }
             set
             {
-                if ((value < MinVoiceEmphasis) || (MaxVoiceEmphasis < value))
-                {
-                    throw new AitalkException("抑揚が範囲外です。");
-                }
-                IsParameterChanged |= (VoiceEmphasis != value);
-                CurrentSpeakerParameter.Range = (float)value;
+                float value_f = (float)Math.Max(MinVoiceEmphasis, Math.Min(value, MaxVoiceEmphasis));
+                IsParameterChanged |= (value_f != CurrentSpeakerParameter.Range);
+                CurrentSpeakerParameter.Range = value_f;
             }
         }
         public const double MinVoiceEmphasis = 0.0;
         public const double MaxVoiceEmphasis = 2.0;
 
         /// <summary>
-        /// 短ポーズ時間[ms] (80～500)
+        /// 短ポーズ時間[ms] (80～500)。PauseLong以下。
         /// </summary>
         public int PauseMiddle
         {
             get { return CurrentSpeakerParameter.PauseMiddle; }
             set
             {
-                if ((value < MinPauseMiddle) || (MaxPauseMiddle < value))
-                {
-                    throw new AitalkException("短ポーズ時間が範囲外です。");
-                }
-                IsParameterChanged |= (PauseMiddle != value);
+                value = Math.Max(MinPauseMiddle, Math.Min(value, MaxPauseMiddle));
+                IsParameterChanged |= (value != CurrentSpeakerParameter.PauseMiddle);
                 CurrentSpeakerParameter.PauseMiddle = value;
+                if (PauseLong < value)
+                {
+                    PauseLong = value;
+                }
             }
         }
         public const int MinPauseMiddle = 80;
         public const int MaxPauseMiddle = 500;
 
         /// <summary>
-        /// 長ポーズ時間[ms] (100～2000)
+        /// 長ポーズ時間[ms] (100～2000)。PauseMiddle以上。
         /// </summary>
         public int PauseLong
         {
             get { return CurrentSpeakerParameter.PauseLong; }
             set
             {
-                if ((value < MinPauseLong) || (MaxPauseLong < value))
-                {
-                    throw new AitalkException("長ポーズ時間が範囲外です。");
-                }
-                IsParameterChanged |= (PauseLong != value);
+                value = Math.Max(MinPauseLong, Math.Min(value, MaxPauseLong));
+                IsParameterChanged |= (value != CurrentSpeakerParameter.PauseLong);
                 CurrentSpeakerParameter.PauseLong = value;
+                if (value < PauseMiddle)
+                {
+                    PauseMiddle = value;
+                }
             }
         }
         public const int MinPauseLong = 100;
@@ -282,11 +270,8 @@ namespace Aitalk
             get { return CurrentSpeakerParameter.PauseSentence; }
             set
             {
-                if ((value < MinPauseSentence) || (MaxPauseSentence < value))
-                {
-                    throw new AitalkException("文末ポーズ時間が範囲外です。");
-                }
-                IsParameterChanged |= (PauseSentence != value);
+                value = Math.Max(MinPauseSentence, Math.Min(value, MaxPauseSentence));
+                IsParameterChanged |= (value != CurrentSpeakerParameter.PauseSentence);
                 CurrentSpeakerParameter.PauseSentence = value;
             }
         }

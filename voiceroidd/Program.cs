@@ -150,7 +150,7 @@ $@"コマンド
 
             try
             {
-                // 言語ファイルを読み込む
+                // 言語ライブラリを読み込む
                 AitalkWrapper.LoadLanguage(Config.LanguageName);
 
                 // フレーズ辞書が設定されていれば読み込む
@@ -171,11 +171,11 @@ $@"コマンド
                     AitalkWrapper.ReloadSymbolDictionary(Config.SymbolDictionaryPath);
                 }
 
-                // 音声データベースを読み込む
+                // ボイスライブラリを読み込む
                 AitalkWrapper.LoadVoice(Config.VoiceDbName);
 
                 // 話者を設定する
-                AitalkWrapper.Parameter.CurrentVoiceName = Config.VoiceName;
+                AitalkWrapper.Parameter.CurrentSpeakerName = Config.VoiceName;
 
                 // 処理を別スレッドで実行する
                 Task task = Task.Factory.StartNew(Run);

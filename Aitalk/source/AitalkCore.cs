@@ -219,7 +219,7 @@ namespace Aitalk
 
                 [DataMember]
                 public float Volume;
-
+                
                 [DataMember]
                 public float Speed;
 

@@ -20,8 +20,14 @@ namespace Aitalk
         /// <param name="authenticate_code">認証コード</param>
         public static void Initialize(string install_directory, string authenticate_code)
         {
+            Finish();
+
             // aitalked.dllをロードするために
             // DLLの探索パスをVOICEROID2のディレクトリに変更する
+            if ((InstallDirectory != null) && (InstallDirectory != install_directory))
+            {
+                throw new AitalkException($"インストールディレクトリを変更して再び初期化することはできません。");
+            }
             InstallDirectory = install_directory;
             SetDllDirectory(InstallDirectory);
 
@@ -46,6 +52,7 @@ namespace Aitalk
             {
                 throw new AitalkException($"AITalkの初期化に失敗しました。", result);
             }
+            IsInitialized = true;
         }
 
         /// <summary>
@@ -53,12 +60,40 @@ namespace Aitalk
         /// </summary>
         public static void Finish()
         {
-            AitalkCore.End();
+            if (IsInitialized == true)
+            {
+                IsInitialized = false;
+                AitalkCore.End();
+            }
+            CurrentLanguage = null;
+            CurrentVoice = null;
+        }
+
+        /// <summary>
+        /// 言語ライブラリの一覧。
+        /// インストールディレクトリのLangディレクトリの中にあるフォルダ名から生成される。
+        /// </summary>
+        public static string[] LanguageList
+        {
+            get
+            {
+                List<string> result = new List<string>();
+                try
+                {
+                    foreach (string path in Directory.GetDirectories($"{InstallDirectory}\\Lang"))
+                    {
+                        result.Add(Path.GetFileName(path));
+                    }
+                }
+                catch (Exception) { }
+                result.Sort(StringComparer.InvariantCultureIgnoreCase);
+                return result.ToArray();
+            }
         }
 
         /// <summary>
         /// ボイスライブラリの一覧。
-        /// インストールディレクトリのVoiceフォルダの中にあるフォルダ名から生成される。
+        /// インストールディレクトリのVoiceディレクトリの中にあるフォルダ名から生成される。
         /// </summary>
         public static string[] VoiceDbList
         {
@@ -73,20 +108,26 @@ namespace Aitalk
                     }
                 }
                 catch (Exception) { }
+                result.Sort(StringComparer.InvariantCultureIgnoreCase);
                 return result.ToArray();
             }
         }
         
         /// <summary>
-        /// 言語データを読み込む
+        /// 言語ライブラリを読み込む
         /// </summary>
         /// <param name="language_name">言語名</param>
         public static void LoadLanguage(string language_name)
         {
+            if (language_name == CurrentLanguage)
+            {
+                return;
+            }
             // 言語の設定をする際はカレントディレクトリを一時的にVOICEROID2のインストールディレクトリに変更する
             // それ以外ではLangLoad()はエラーを返す
             string current_directory = System.IO.Directory.GetCurrentDirectory();
             System.IO.Directory.SetCurrentDirectory(InstallDirectory);
+            CurrentLanguage = null;
             AitalkCore.Result result;
             result = AitalkCore.LangClear();
             if ((result == AitalkCore.Result.Success) || (result == AitalkCore.Result.NotLoaded))
@@ -98,6 +139,7 @@ namespace Aitalk
             {
                 throw new AitalkException($"言語'{language_name}'の読み込みに失敗しました。", result);
             }
+            CurrentLanguage = language_name;
         }
 
         /// <summary>
@@ -175,6 +217,12 @@ namespace Aitalk
         /// <param name="voice_db_name">ボイスライブラリ名</param>
         public static void LoadVoice(string voice_db_name)
         {
+            if (voice_db_name == CurrentVoice)
+            {
+                return;
+            }
+
+            CurrentVoice = null;
             AitalkCore.VoiceClear();
             if (voice_db_name == null)
             {
@@ -196,6 +244,8 @@ namespace Aitalk
             tts_param.PauseTerm = 0;
             tts_param.ExtendFormatFlags = AitalkCore.ExtendFormat.JeitaRuby | AitalkCore.ExtendFormat.AutoBookmark;
             Parameter = new AitalkParameter(voice_db_name, tts_param, speaker_params);
+
+            CurrentVoice = voice_db_name;
         }
 
         /// <summary>
@@ -629,6 +679,31 @@ namespace Aitalk
         /// インストールディレクトリ
         /// </summary>
         public static string InstallDirectory { get; private set; }
+
+        /// <summary>
+        /// 初期化が成功したならtrueを返す
+        /// </summary>
+        public static bool IsInitialized { get; private set; } = false;
+
+        /// <summary>
+        /// 言語ライブラリが読み込まれているならtrueを返す
+        /// </summary>
+        public static bool IsLanguageLoaded { get { return CurrentLanguage != null; } }
+
+        /// <summary>
+        /// 読み込まれている言語ライブラリ名
+        /// </summary>
+        public static string CurrentLanguage { get; private set; }
+        
+        /// <summary>
+        /// ボイスライブラリが読み込まれているならtrueを返す
+        /// </summary>
+        public static bool IsVoiceLoaded { get { return CurrentVoice != null; } }
+
+        /// <summary>
+        /// 読み込まれているボイスライブラリ名
+        /// </summary>
+        public static string CurrentVoice { get; private set; }
 
         /// <summary>
         /// 仮名変換のジョブを管理するクラス

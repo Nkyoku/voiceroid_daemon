@@ -1,0 +1,81 @@
+﻿@model VoiceroidDaemon.Models.SystemSettingModel
+@{
+    ViewData["Title"] = "システムの設定";
+    List<SelectListItem> language_items = ViewData["LanguageListItems"] as List<SelectListItem>;
+}
+@section Head {
+    <style type="text/css">
+        label, input {
+            display: block;
+        }
+    </style>
+    <style type="text/css">
+        input[type="text"] {
+            width: 100%;
+        }
+    </style>
+    <script>
+        window.onload = function () {
+            var result = '@ViewData["Alert"]';
+            if (0 < result.length) {
+                alert(result);
+            }
+        }
+        function GetKey() {
+            var request = new XMLHttpRequest();
+            var exe_name = document.getElementById("VoiceroidEditorExe").value;
+            if (0 < exe_name.length) {
+                request.open("GET", "/api/getkey/" + exe_name, false);
+            } else {
+                request.open("GET", "/api/getkey", false);
+            }
+            request.send(null);
+            if (request.status == 200) {
+                var auth_code = request.responseText;
+                if (auth_code) {
+                    var output = document.getElementById("AuthCodeSeed");
+                    output.value = request.responseText;
+                } else {
+                    alert("取得に失敗しました。");
+                }
+            }
+        }
+    </script>
+}
+<h2>@ViewData["Title"]</h2>
+<hr />
+@using (Html.BeginForm("SystemSetting", "Home", FormMethod.Post))
+{
+    @Html.LabelFor(model => model.InstallPath, "インストールディレクトリ (再起動するまで変更は反映されません)");
+    @Html.TextBoxFor(model => model.InstallPath, Model.InstallPath, new { placeholder = SystemSettingModel.DefaultInstallPath });
+    <hr />
+    @Html.LabelFor(model => model.VoiceroidEditorExe, "VOICEROID2エディタの実行ファイル");
+    @Html.TextBoxFor(model => model.VoiceroidEditorExe, Model.VoiceroidEditorExe, new { placeholder = SystemSettingModel.DefaultVoiceroidEditorExe });
+    <hr />
+    @Html.LabelFor(model => model.AuthCodeSeed, "認証コードのシード値");
+    @Html.TextBoxFor(model => model.AuthCodeSeed, Model.AuthCodeSeed)
+    <input type="button" value="起動中のVOICEROID2エディタから取得する" onclick="GetKey()" />
+    <hr />
+    @Html.LabelFor(model => model.LanguageName, "言語");
+    @Html.DropDownListFor(model => model.LanguageName, language_items);
+    <hr />
+    @Html.LabelFor(model => model.PhraseDictionaryPath, "フレーズ辞書のファイルパス");
+    @Html.TextBoxFor(model => model.PhraseDictionaryPath, Model.PhraseDictionaryPath)
+    <hr />
+    @Html.LabelFor(model => model.WordDictionaryPath, "単語辞書のファイルパス");
+    @Html.TextBoxFor(model => model.WordDictionaryPath, Model.WordDictionaryPath)
+    <hr />
+    @Html.LabelFor(model => model.SymbolDictionaryPath, "記号ポーズ辞書のファイルパス");
+    @Html.TextBoxFor(model => model.SymbolDictionaryPath, Model.SymbolDictionaryPath)
+    <hr />
+    @Html.LabelFor(model => model.KanaTimeout, "読み仮名変換のタイムアウト [ms] (0のとき無制限に待つ)");
+    @Html.TextBoxFor(model => model.KanaTimeout, new { value = Model.KanaTimeout, type = "number", min = "0", max = "10000" })
+    <hr />
+    @Html.LabelFor(model => model.SpeechTimeout, "音声変換のタイムアウト [ms] (0のとき無制限に待つ)");
+    @Html.TextBoxFor(model => model.SpeechTimeout, new { value = Model.SpeechTimeout, type = "number", min = "0", max = "10000" })
+    <hr />
+    @Html.LabelFor(model => model.ListeningAddress, "待ち受けアドレス");
+    @Html.TextBoxFor(model => model.ListeningAddress, Model.ListeningAddress, new { placeholder = SystemSettingModel.DefaultListeningAddress })
+    <hr />
+    <input type="submit" value="保存する" />
+}

@@ -10,97 +10,74 @@ VOICEROID2のDLL(aitalked.dll)を直接叩いて、音声データをHTTPで取�
 Visual Studio 2017
 
 ## 使い方
-コマンドプロンプトやPowerShellよりvoiceroidd.exeを起動します。  
-初回起動時は  
-```
-voiceroidd.exe auth
-```  
-と打ってガイダンスに従いDLLの認証コードを取得して設定ファイルを保存してください。    
-認証コードはおそらくDLLの不正使用を防止するためのコードで、ボイスライブラリのライセンスとは別のものです。  
-次に生成された設定ファイル(既定では`config.json`)に必要なパラメータを入力してください。  
-  
-記入を終えたら以下のコマンドでHTTPサーバーを起動してください。  
-```
-voiceroidd.exe server
-```  
-サーバーが起動するとタスクトレイにアイコンが出て待ち受け状態になります。  
-終了させるときはトレイアイコンのコンテキストメニューをからExitを選択して終了させてください。  
-何か設定に問題があったりエラーが発生した場合はメッセージボックスでエラーが表示されます。  
-そのときは設定ファイルや環境を見直してください。
+コマンドプロンプトやPowerShellよりVoiceroidDaemon.exeを起動します。  
+初期状態ではポート8080にHTTPサーバーが立ち上がりますので、  
+ウェブブラウザを使って`http://127.0.0.1:8080/`にアクセスしてください。  
 
-正常にサーバーが起動したらWebブラウザなどからアクセスしてテストが可能です。  
+始めにページ上部のナビゲーションバーから「システムの設定」ページを開き必要な設定事項を入力してください。  
+aitalked.dllを利用するためにはDLLの認証コードが必要ですが、本ソフトウェアはこれをVOICEROID2エディタから取得することができます。  
+「認証コードのシード値」のテキストボックスの下にあるボタンを押すと、取得された文字列がテキストボックスに入力されます。  
+待ち受けアドレスを`http://+:8080/`などに設定することで外部からの接続を受け入れることができます。  
+その場合、管理者権限でコマンドプロンプトやPowerShellを起動して以下のコマンドを入力しアクセスを許可してください。
+```
+netsh http add urlacl url=http://+:8080/ user=<Windowsのユーザー名>
+```
+設定できたら「保存する」ボタンを押してください。  
+
+次にナビゲーションバーから「話者の設定」ページを開き、使用するボイスライブラリと話者を選択してください。  
+ここで表示されるボイスライブラリや話者の名前はキャラクターの日本語名ではなくファイルの名前です。  
+設定したら「保存する」ボタンを押してください。  
+
+ここまでダイアログでエラーが表示されなかったなら「Home」ページにて仮名変換や音声変換を試すことができるはずです。  
+
+なお、ここまでの設定はカレントディレクトリに「setting.json」というファイルで保存されます。  
+しかしVoiceroidDaemonの起動オプションに`/setting=<ファイル名>`と付け加えることでファイル名を変更することができます。
+
+## Web API
+仮名変換や音声変換はWeb APIとして呼び出すことが可能です。  
 以下にAPIの使用例を示します。
 IPアドレスとポートはそれぞれの環境に読み替えてください。
 
-- 文章をVOICEROIDの読み仮名に変換する。  
-`http://127.0.0.1:8080/kana/fromtext/こんにちは`  
-にアクセスすると`<S>(Irq MARK=_AI@5)コ^ンニチワ<F>`というテキストファイルが返ります。  
+- 文章をVOICEROIDの読み仮名に変換する①  
+`http://127.0.0.1:8080/api/converttext/こんにちは` (GETメソッド)  
+にアクセスすると`<S>(Irq MARK=_AI@5)コ^ンニチワ<F>`というテキストが返ります。  
+
+- 文章をVOICEROIDの読み仮名に変換する②  
+`http://127.0.0.1:8080/api/converttext` (POSTメソッド)  
+に後述する構造のJSONテキストをPOSTしても変換できます。  
 
 - 文章を音声に変換する。  
-`http://127.0.0.1:8080/speech/fromtext/こんばんは`  
+`http://127.0.0.1:8080/api/speechtext/こんばんは` (GETメソッド)  
 にアクセスするとwavファイルが返ります。  
+WAVEファイルのフォーマットは44.1kHz,16bit,モノラルです。  
 
-- 読み仮名を音声に変換する。  
-読み仮名には特殊記号が含まれるためUTF-8でURLエンコードしてください。  
-`http://127.0.0.1:8080/speech/fromkana/%3cS%3e%28Irq%20MARK%3d_AI%405%29%e3%82%b3%5e%e3%83%b3%e3%83%8b%e3%83%81%e3%83%af%3cF%3e`  
-にアクセスするとWAVEファイルが返ります。  
-WAVEファイルのフォーマットは44.1kHz,16bit,モノラルです。
+- 文章を音声に変換する。  
+`http://127.0.0.1:8080/api/speechtext` (POSTメソッド)  
+に後述する構造のJSONテキストをPOSTしても変換できます。  
+この場合、文章の代わりに読み仮名を指定して音声変換することもできます。  
 
-## 設定ファイル
-設定ファイルはJSON形式で書かれています。  
-既定では設定ファイルは`config.json`という名前でvoiceroidd.exe起動時のカレントディレクトリに生成されます。
+## スピーチパラメータ
+読み仮名変換や音声変換はURLリクエストの形で指定する他、JSON形式のテキストをPOSTすることでも行えます。  
+以下にフォーマットを示します。  
 ```
 {
-  "AuthCodeSeed": "",
-  "InstallPath": "C:\\Program Files (x86)\\AHS\\VOICEROID2",
-  "KanaTimeout": 0,
-  "LanguageName": "standard",
-  "ListeningAddress": "http:\/\/127.0.0.1:8080\/",
-  "PhraseDictionaryPath": "",
-  "SpeechTimeout": 0,
-  "SymbolDictionaryPath": "",
-  "VoiceDbName": "",
-  "VoiceName": "",
-  "VoiceroidEditorExe": "VoiceroidEditor.exe",
-  "WordDictionaryPath": ""
+  "Text" : <読み仮名あるいは音声に変換する文章>,
+  "Kana" : <音声に変換する読み仮名>,
+  "Speaker" : {
+    "Volume" : <音量 (0～2)>
+	"Speed" : <話速 (0.5～4)>
+	"Pitch" : <高さ (0.5～2)>
+	"Emphasis" : <抑揚 (0～2)>
+	"PauseMiddle" : <短ポーズ時間[ms] (80～500) PauseLong以下>
+	"PauseLong" : <長ポーズ時間[ms] (100～2000) PauseMiddle以上>
+	"PauseSentence" : <文末ポーズ時間[ms] (0～10000)>
+  }
 }
 ```
-
-- AuthCodeSeed  
-DLLの認証コードです。使い方の節を参照してください。
-- InstallPath  
-VOICEROID2のインストールパスです。  
-もし標準の場所以外にインストールした場合はここを変更してください。
-- VoiceroidEditorExe  
-VOICEROID2エディタの実行ファイルの名前を指定します。
-- ListeningAddress  
-HTTPサーバーの待ち受けアドレスとポートです。  
-もし外部からの接続を待ち受ける場合、  
-待ち受けアドレスは`http://+:8080/`などに設定し、  
-管理者権限でコマンドプロンプトやPowerShellを起動して以下のコマンドを入力しアクセスを許可してください。
-```
-netsh http add urlacl url=http://+:8080/ user=<ユーザー名をここに入れる>
-```
-- LanguageName  
-言語名を指定します。
-- VoiceDbName  
-ボイスライブラリ名を指定します。  
-インストールフォルダのVoiceフォルダ内のフォルダ名です。
-- VoiceName  
-話者名を指定します。  
-単一話者のボイスライブラリの場合はおそらくボイスライブラリ名と同じです。
-- PhraseDictionaryPath
-- SymbolDictionaryPath
-- WordDictionaryPath  
-それぞれフレーズ辞書、記号ポーズ辞書、単語辞書のファイルパスを指定します。使わないのなら空欄にしてください。
-- KanaTimeout  
-テキスト→読み仮名変換時のタイムアウト(ミリ秒)です。  
-0を指定するとタイムアウトせずに無制限に処理の完了を待ちます。
-- SpeechTimeout  
-読み仮名(テキスト)→音声変換時のタイムアウト(ミリ秒)です。  
-0を指定するとタイムアウトせずに無制限に処理の完了を待ちます。
+指定しないパラメータは省略できます。その場合、ボイスライブラリの初期値が使用されます。  
+また、`Volume`, `Speed`, `Pitch`, `Emphasis`はNaNを指定すると初期値が、  
+`PauseMiddle`, `PauseLong`, `PauseSentence`は-1を指定すると初期値が使用されます。
 
 ## ライセンス
 本ソフトウェアの製作にあたって以下のライブラリを使用しています。  
 - [Friendly](https://github.com/Codeer-Software/Friendly)  
-- [CommandLineUtils](https://github.com/natemcmaster/CommandLineUtils)  

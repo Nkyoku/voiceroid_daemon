@@ -19,7 +19,7 @@ namespace VoiceroidDaemon.Models
         public double Speed { get; set; } = double.NaN;
 
         /// <summary>
-        /// 高さ(0.5～4)
+        /// 高さ(0.5～2)
         /// </summary>
         public double Pitch { get; set; } = double.NaN;
 

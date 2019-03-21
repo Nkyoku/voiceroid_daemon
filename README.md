@@ -41,6 +41,7 @@ IPアドレスとポートはそれぞれの環境に読み替えてください
 - 文章をVOICEROIDの読み仮名に変換する①  
 `http://127.0.0.1:8080/api/converttext/こんにちは` (GETメソッド)  
 にアクセスすると`<S>(Irq MARK=_AI@5)コ^ンニチワ<F>`というテキストが返ります。  
+[仮名変換についての詳細はこちら](https://blankalilio.blogspot.com/2019/03/voiceroid2aikana.html)  
 
 - 文章をVOICEROIDの読み仮名に変換する②  
 `http://127.0.0.1:8080/api/converttext` (POSTメソッド)  
@@ -64,12 +65,12 @@ WAVEファイルのフォーマットは44.1kHz,16bit,モノラルです。
   "Text" : <読み仮名あるいは音声に変換する文章>,
   "Kana" : <音声に変換する読み仮名>,
   "Speaker" : {
-    "Volume" : <音量 (0～2)>
-	"Speed" : <話速 (0.5～4)>
-	"Pitch" : <高さ (0.5～2)>
-	"Emphasis" : <抑揚 (0～2)>
-	"PauseMiddle" : <短ポーズ時間[ms] (80～500) PauseLong以下>
-	"PauseLong" : <長ポーズ時間[ms] (100～2000) PauseMiddle以上>
+    "Volume" : <音量 (0～2)>,
+	"Speed" : <話速 (0.5～4)>,
+	"Pitch" : <高さ (0.5～2)>,
+	"Emphasis" : <抑揚 (0～2)>,
+	"PauseMiddle" : <短ポーズ時間[ms] (80～500) PauseLong以下>,
+	"PauseLong" : <長ポーズ時間[ms] (100～2000) PauseMiddle以上>,
 	"PauseSentence" : <文末ポーズ時間[ms] (0～10000)>
   }
 }

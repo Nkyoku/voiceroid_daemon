@@ -53,7 +53,7 @@ namespace VoiceroidDaemon.Controllers
                 }
                 else
                 {
-                    ViewData["Alert"] = "設定は保存され、設定の有効性が確認されました。";
+                    ViewData["Alert"] = "設定は保存され、設定の有効性が確認されました。\\n一部の設定は再起動するまで反映されません。";
                 }
             }
             return SystemSetting();

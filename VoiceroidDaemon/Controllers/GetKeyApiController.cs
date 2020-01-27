@@ -6,6 +6,8 @@ using System.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using VoiceroidDaemon.Models;
+using System.IO;
+using System.Reflection;
 
 namespace VoiceroidDaemon.Controllers
 {
@@ -21,13 +23,13 @@ namespace VoiceroidDaemon.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpGet("{exe}")]
-        public string ConvertTextFromRequest(string exe)
+        public string GetKey(string exe)
         {
             try
             {
                 ProcessStartInfo start_info = new ProcessStartInfo();
-                start_info.FileName = "Injecter/Injecter.exe";
-                start_info.Arguments = exe ?? Setting.System.VoiceroidEditorExe;
+                start_info.FileName = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "\\Injecter.exe";
+                start_info.Arguments = "\"" + Setting.System.InstallPath + "\\" + (exe ?? Setting.System.VoiceroidEditorExe) + "\"";
                 start_info.CreateNoWindow = true;
                 start_info.RedirectStandardOutput = true;
                 using (Process process = Process.Start(start_info))
@@ -35,7 +37,9 @@ namespace VoiceroidDaemon.Controllers
                     process.WaitForExit(10000);
                     if (process.HasExited == true)
                     {
-                        return process.StandardOutput.ReadToEnd();
+                        string result = process.StandardOutput.ReadToEnd();
+                        process.WaitForExit();
+                        return result; 
                     }
                     else
                     {

@@ -1,5 +1,7 @@
 # voiceroid_daemon
-VOICEROID2のHTTPサーバーデーモン
+VOICEROID2のHTTPサーバーデーモン  
+  
+[Pythonパッケージ](https://github.com/Nkyoku/pyvcroid2)を作ったのでHTTPサーバーである必要が無かったらそちらのほうが使い勝手が良いと思います。
 
 ## 概要
 VOICEROID2のDLL(aitalked.dll)を直接叩いて、音声データをHTTPで取得できるサーバーソフトです。  
